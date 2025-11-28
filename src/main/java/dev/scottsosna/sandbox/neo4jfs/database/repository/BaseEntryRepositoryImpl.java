@@ -1,0 +1,228 @@
+package dev.scottsosna.sandbox.neo4jfs.database.repository;
+
+import dev.scottsosna.sandbox.neo4jfs.config.Neo4jfsConfiguration;
+import dev.scottsosna.sandbox.neo4jfs.config.Neo4jfsConstants;
+import dev.scottsosna.sandbox.neo4jfs.database.node.BaseEntry;
+import jakarta.annotation.PostConstruct;
+import org.neo4j.ogm.config.Configuration;
+import org.neo4j.ogm.model.Result;
+import org.neo4j.ogm.session.Session;
+import org.neo4j.ogm.session.SessionFactory;
+
+import java.net.URI;
+import java.time.Instant;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.StreamSupport;
+
+import static dev.scottsosna.sandbox.neo4jfs.config.Neo4jfsConstants.NEO4JFS_URI_SCHEME;
+
+public class BaseEntryRepositoryImpl {
+
+    //  Session factory for oft-use default database.
+    protected static SessionFactory defaultSessionFactory;
+
+    private Neo4jfsConfiguration config;
+
+    //  Neo4J session factories for each file system (database).  Static so factories can be shared
+    //  across multiple services.
+    final private Map<String, SessionFactory> sessionFactories = new ConcurrentHashMap<>();
+
+    private static final String MATCH_ENTRY = "(d%d {name: $name%d})";
+    private static final String QUERY_DIRECTORY_AND_CHILD = "MATCH (p:Directory {id: $id})-[]->(c {name: $name}) RETURN p,c";
+    private static final String QUERY_DELETE_NODE = "MATCH (n {id: $id}) DETACH DELETE n";
+    private static final String RELATIONSHIP_LINK = "-[]->";
+
+    protected static final String ROOT_DIRECTORY_NAME = Neo4jfsConstants.NAME_ROOT_DIRECTORY;
+
+    public BaseEntryRepositoryImpl(Neo4jfsConfiguration config) {
+        super();
+        this.config = config;
+    }
+
+    /**
+     * Attempt to find a child of a directory by name.  The child may be either a directory or a file (or truthfully
+     * anything else) but the parent must be a directory.  The primary use case is to determine the existence/lack
+     * thereof of a child for a specific name and, when present, its type.
+     * @param uri URI of the file system.
+     * @param directoryNodeId generated node id for the parent directory
+     * @param childNodeName name of the child node desired
+     * @return the child node, when found, or null.
+     */
+    public BaseEntry findNamedChild(URI uri, String directoryNodeId, String childNodeName) {
+        Map<String,Object> params = Map.of("id", directoryNodeId, "name", childNodeName);
+        List<BaseEntry> entries = query(uri, QUERY_DIRECTORY_AND_CHILD, params, BaseEntry.class);
+        return (entries.isEmpty() ? null : entries.get(1));
+    }
+
+    /**
+     * Save or update an entry to Neo4J
+     * @param uri URI of the file system, using host to identify database.
+     * @param entry entry to be persisted
+     * @param clazz specific class of entry, e.g. DirectoryEntry or FileEntry
+     */
+    public <T extends BaseEntry> void save(URI uri, T entry, Class<T> clazz) {
+        updateTimestamps(entry);
+        getSessionFactory(uri).openSession().save(entry);
+    }
+
+    /**
+     * Only update last accessed timestamp for entry provided.  To guarantee inadvertent changes to entry aren't
+     * accidentally persisted, the entry is loaded first and then updated
+     * @param uri URI of the file system, using host to identify database.
+     * @param entry entry to have its last accessed timestamp updated
+     * @return the entry with its last accessed timestamp updated.
+     */
+    public BaseEntry updateLastAccessed(URI uri, BaseEntry entry) {
+        Session session = getSessionFactory(uri).openSession();
+        BaseEntry loaded = session.load(BaseEntry.class, entry.getId());
+        loaded.setLastAccessed(Instant.now());
+        session.save(loaded);
+        return entry;
+    }
+
+    /**
+     * Retrieve of create OGM session factory based on the URI.  Confirm that protocol is correct and
+     * then use host as the database name.
+     * @param uri URI for the file system
+     * @return session factory
+     */
+    protected SessionFactory getSessionFactory(URI uri) {
+        validate(uri);
+        return sessionFactory(uri.getHost());
+    }
+
+    /**
+     * Retrieve or create OGM session factory for the specified database.
+     * @param dbName database for which session factory is required
+     * @return session factory for database.
+     */
+    private SessionFactory sessionFactory(String dbName) {
+        //  Has session factory been previously created?
+        var sf = sessionFactories.get(dbName);
+        if (sf == null) {
+            //  no existing session factory so create new.
+            sf = new SessionFactory(buildConfiguration(dbName),
+                "dev.scottsosna.sandbox.neo4jfs.database",
+                "dev.scottsosna.sandbox.neo4jfs.database.node");
+            sessionFactories.put(dbName, sf);
+        }
+
+        return sf;
+    }
+
+    /**
+     * Build configuration for connecting to neo4j
+     * @param dbName database name to connect to
+     * @return built configuration
+     */
+    private Configuration buildConfiguration(String dbName) {
+        return new Configuration.Builder()
+            .uri(config.neo4jUri)
+            .credentials(config.neo4jUsername, config.neo4jPassword)
+            .database(dbName)
+            .useNativeTypes()
+            .build();
+    }
+
+    /**
+     * Confirms the URI scheme is correct.
+     * @param uri
+     */
+    protected void validate (URI uri) {
+        if (!NEO4JFS_URI_SCHEME.equals(uri.getScheme())) {
+            throw new IllegalArgumentException("URI scheme must be " + NEO4JFS_URI_SCHEME + ".");
+        }
+    }
+
+    protected boolean deleteNodeById(URI uri, String nodeId) {
+        Result r = getSessionFactory(uri).openSession().query(QUERY_DELETE_NODE, Map.of("id", nodeId));
+        return r.queryStatistics().getNodesDeleted() > 0;
+    }
+
+    /**
+     * Execute Cypher query and return objects found
+     * @param uri for the file system
+     * @param query Cypher query to execute
+     * @param parameters parameters to pass to Cypher query
+     * @param clazz specific class of objects being returned
+     * @return list of 0 or more objects of type clazz
+     */
+    protected <T> List<T> query(URI uri, String query, Map<String,Object> parameters, Class<T> clazz) {
+        var results = getSessionFactory(uri).openSession().query(clazz, query, parameters);
+        return StreamSupport.stream(results.spliterator(), false).toList();
+    }
+
+    /**
+     * Execute Cypher query and return objects found
+     * @param query Cypher query to execute
+     * @param clazz specific class of objects being returned
+     * @return list of 0 or more objects of type clazz
+     */
+    protected <T> List<T> query(URI uri,String query, Class<T> clazz) {
+        return query(uri, query, Map.of(), clazz);
+    }
+
+    /**
+     * Executes non-Cypher query where results are maps which require manual deserialization.
+     * @param query
+     * @param parameters
+     * @return
+     */
+    protected Result query(String query, Map<String,String> parameters) {
+        return defaultSessionFactory.openSession().query(query, parameters);
+    }
+
+    /**
+     * Executes non-Cypher query where results are maps which require manual deserialization.
+     * @param query query to execute
+     * @return
+     */
+    protected Result query(String query) {
+        return query(query, Map.of());
+    }
+
+    /**
+     * Extends Cypher query to navigate from a directory to any entry, such as a sub-directory or contained file
+     * @param sbMatch builder for query
+     * @param sbReturn builder for return clause
+     * @param queryParams map of parameters to pass to Cypher query
+     * @param entryName entry name to match
+     * @param index depth of navigation, used for parameter names and return
+     */
+    protected void addMatchEntry(StringBuilder sbMatch,
+                                 StringBuilder sbReturn,
+                                 Map<String,Object> queryParams,
+                                 String entryName,
+                                 int index) {
+        sbMatch
+            .append(RELATIONSHIP_LINK)
+            .append(MATCH_ENTRY.formatted(index, index));
+        queryParams.put("name" + index, entryName);
+        sbReturn.append(", d").append(index);
+    }
+
+
+    /**
+     * Updates timestamps as appropriate for entry.  No created timestamp means brand new entry requiring
+     * all timestamps set; otherwise just set last modified.
+     * @param entry
+     */
+    private void updateTimestamps (BaseEntry entry) {
+        Instant now = Instant.now();
+        if (entry.getCreated() == null) {
+            entry.setCreated(now);
+            entry.setLastAccessed(now);
+            entry.setLastModified(now);
+        } else {
+            entry.setLastModified(now);
+        }
+    }
+
+    @PostConstruct
+    private void init() {
+        //  Get existing databases and look for one marked "default"
+        defaultSessionFactory = sessionFactory(config.neo4jBaseDatabaseName);
+    }
+}

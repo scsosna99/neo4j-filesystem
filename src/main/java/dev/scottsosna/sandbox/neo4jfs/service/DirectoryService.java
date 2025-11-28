@@ -1,0 +1,29 @@
+package dev.scottsosna.sandbox.neo4jfs.service;
+
+import dev.scottsosna.sandbox.neo4jfs.database.node.BaseEntry;
+import dev.scottsosna.sandbox.neo4jfs.database.node.DirectoryEntry;
+import dev.scottsosna.sandbox.neo4jfs.database.node.FileEntry;
+
+import java.io.IOException;
+import java.net.URI;
+import java.nio.file.FileVisitor;
+import java.util.List;
+
+public interface DirectoryService {
+    String SEPARATOR = "/";
+
+    DirectoryEntry createRoot (URI uri);
+    DirectoryEntry findOrCreateRoot(URI uri);
+    DirectoryEntry mkdir (URI uri);
+    void delete(URI uri) throws IOException;
+    void rmdir(URI uri) throws IOException;
+    void rmdirRecursively(URI uri) throws IOException;
+    void dumpTree(URI uri);
+    BaseEntry parent(URI uri);
+    List<BaseEntry> find(URI uri);
+    DirectoryEntry findChildren(URI uri, String parentId, int skip, int limit);
+    DirectoryEntry addFile(URI uri, DirectoryEntry parent, FileEntry file);
+    DirectoryEntry getRoot(URI uri);
+    void registerFileService(FileService fs);
+    void registerVisitor(final String key, final FileVisitor visitor);
+}
