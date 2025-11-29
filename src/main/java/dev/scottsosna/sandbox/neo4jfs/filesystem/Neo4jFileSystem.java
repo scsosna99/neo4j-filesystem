@@ -1,5 +1,6 @@
 package dev.scottsosna.sandbox.neo4jfs.filesystem;
 
+import dev.scottsosna.sandbox.neo4jfs.config.Neo4jfsConstants;
 import dev.scottsosna.sandbox.neo4jfs.service.DirectoryService;
 import lombok.Getter;
 
@@ -19,6 +20,11 @@ public class Neo4jFileSystem extends FileSystem {
      * Environment-specifics passed to file system provider when creating file system.
      */
     private final Map<String,?> env;
+
+    /**
+     * Root Neo4jfs path for root for this file system.
+     */
+    private final Path rootPath;
 
     /**
      * Creating file system provider
@@ -42,6 +48,7 @@ public class Neo4jFileSystem extends FileSystem {
         this.uri = uri;
         this.env = (env != null) ? env : Map.of();
         isOpen = true;
+        rootPath = new Neo4jfsPath(this, Neo4jfsConstants.NAME_ROOT_DIRECTORY);
     }
 
     @Override
@@ -108,5 +115,9 @@ public class Neo4jFileSystem extends FileSystem {
     @Override
     public WatchService newWatchService() throws IOException {
         return null;
+    }
+
+    Path getRootPath() {
+        return rootPath;
     }
 }

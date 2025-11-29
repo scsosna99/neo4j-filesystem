@@ -3,8 +3,6 @@ package dev.scottsosna.sandbox.neo4jfs;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
-import java.net.URI;
-
 @SpringBootApplication
 public class Neo4jfsApplication {
 

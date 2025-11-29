@@ -3,7 +3,6 @@ package dev.scottsosna.sandbox.neo4jfs.filesystem;
 import dev.scottsosna.sandbox.neo4jfs.config.Neo4jfsConstants;
 import dev.scottsosna.sandbox.neo4jfs.service.DirectoryService;
 import dev.scottsosna.sandbox.neo4jfs.service.FileSystemService;
-import org.springframework.web.util.UriBuilder;
 
 import java.io.IOException;
 import java.net.URI;
@@ -84,17 +83,23 @@ public class Neo4jFileSystemProvider extends FileSystemProvider {
     public Path getPath(URI uri) {
         validateUri(uri);
 
-        //  Path is specific to file system host (partition) and needs to be stored with created path.
-        FileSystem fs = getFileSystem(uri);
-
         //  If no path specified, default to root directory.
         String path = uri.getPath();
         if (path == null || path.isEmpty()) {
             path = Neo4jfsConstants.NAME_ROOT_DIRECTORY;
         }
 
-        //  Create and return path.
-        return new Neo4jfsPath(fs, path);
+        try {
+            //  Get file system from URI.
+            FileSystem fs = getFileSystem(uri);
+
+            //  Path is specific to file system host (partition) and needs to be stored with created path.
+            return new Neo4jfsPath(fs, path);
+        } catch (FileSystemNotFoundException e) {
+            //  The file system won't exist during FileSystems.newFileSystem(), chicken-and-egg problem,
+            //  so get around problem by just using default path.
+            return Path.of(path);
+        }
     }
 
     @Override

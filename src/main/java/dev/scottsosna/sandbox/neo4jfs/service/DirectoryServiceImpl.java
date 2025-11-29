@@ -31,12 +31,12 @@ public class DirectoryServiceImpl extends BaseNeo4jfsService implements Director
     }
 
     public DirectoryEntry createRoot (URI uri) {
-        checkSchema(uri);
+        checkUri(uri);
         return repository.createRoot(uri);
     }
 
     public DirectoryEntry findOrCreateRoot(URI uri) {
-        checkSchema(uri);
+        checkUri(uri);
         DirectoryEntry d = repository.findRoot(uri);
         if (d == null) {
             d = repository.createRoot(uri);
@@ -46,7 +46,7 @@ public class DirectoryServiceImpl extends BaseNeo4jfsService implements Director
     }
 
     public DirectoryEntry mkdir (URI uri) {
-        checkSchema(uri);
+        checkUri(uri);
 
         //  The parents of the new directory must exist, so query them from the database.
         Path path = Path.of(uri);
@@ -141,33 +141,33 @@ public class DirectoryServiceImpl extends BaseNeo4jfsService implements Director
     }
 
     public void dumpTree(URI uri) {
-        checkSchema(uri);
+        checkUri(uri);
         walkFileTree(uri, new DebuggingFileVisitor());
     }
 
     public BaseEntry parent(URI uri) {
-        checkSchema(uri);
+        checkUri(uri);
         return repository.parent(uri);
     }
 
     public List<BaseEntry> find(URI uri) {
-        checkSchema(uri);
+        checkUri(uri);
         return repository.find(uri, Path.of(uri));
     }
 
     public DirectoryEntry findChildren(URI uri, String parentId, int skip, int limit) {
-        checkSchema(uri);
+        checkUri(uri);
         return repository.getParentWithChildren(uri, parentId, skip, limit);
     }
 
     public DirectoryEntry addFile(URI uri, DirectoryEntry parent, FileEntry file) {
-        checkSchema(uri);
+        checkUri(uri);
         parent.setFiles(List.of(file));
         return repository.save(uri, parent);
     }
 
     public DirectoryEntry getRoot(URI uri) {
-        checkSchema(uri);
+        checkUri(uri);
         DirectoryEntry d = repository.findRoot(uri);
         return d;
     }
@@ -179,7 +179,7 @@ public class DirectoryServiceImpl extends BaseNeo4jfsService implements Director
      * @throws IOException if the path doesn't exist.
      */
     private List<BaseEntry> prologue(URI uri) throws IOException{
-        checkSchema(uri);
+        checkUri(uri);
 
         //  Confirm path existence.
         List<BaseEntry> parts = find(uri);
@@ -213,7 +213,7 @@ public class DirectoryServiceImpl extends BaseNeo4jfsService implements Director
      * @param visitor visitor to apply to each node
      */
     private void walkFileTree(URI uri, FileVisitor<Neo4jfsTreeWalker.NeofjfsWalkerEvent> visitor) {
-        checkSchema(uri);
+        checkUri(uri);
 
         var attribs = new Neo4jfsFileAttributes();
 
@@ -247,7 +247,7 @@ public class DirectoryServiceImpl extends BaseNeo4jfsService implements Director
      * @param fileVisitorKey key for finding registered visitor
      */
     private void walkFileTree(URI uri, String fileVisitorKey) {
-        checkSchema(uri);
+        checkUri(uri);
         walkFileTree(uri, visitorMap.get(fileVisitorKey));
     }
 

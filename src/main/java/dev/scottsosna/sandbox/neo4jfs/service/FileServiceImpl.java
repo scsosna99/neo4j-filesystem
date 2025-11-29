@@ -32,7 +32,7 @@ public class FileServiceImpl extends BaseNeo4jfsService implements FileService {
     }
 
     public void create (URI uri, InputStream inputStream) throws IOException {
-        checkSchema(uri);
+        checkUri(uri);
 
         //  Does parent directory exist and is it a directory?
         BaseEntry parent = directoryService.parent(uri);
@@ -57,7 +57,7 @@ public class FileServiceImpl extends BaseNeo4jfsService implements FileService {
     }
 
     public void create (URI uri, File sourceFile) throws IOException{
-        checkSchema(uri);
+        checkUri(uri);
 
         try {
             create(uri, Files.newInputStream(Path.of(sourceFile.getAbsolutePath())));
@@ -67,7 +67,7 @@ public class FileServiceImpl extends BaseNeo4jfsService implements FileService {
     }
 
     public void delete(URI uri) throws IOException {
-        checkSchema(uri);
+        checkUri(uri);
 
         List<BaseEntry> parts = directoryService.find(uri);
         if (parts.isEmpty()) {

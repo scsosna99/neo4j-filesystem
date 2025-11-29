@@ -1,8 +1,11 @@
 package dev.scottsosna.sandbox.neo4jfs.filesystem;
 
+import dev.scottsosna.sandbox.neo4jfs.config.Neo4jfsConstants;
+
 import java.io.IOException;
 import java.net.URI;
 import java.nio.file.*;
+import java.util.Objects;
 
 public class Neo4jfsPath implements Path {
 
@@ -10,11 +13,19 @@ public class Neo4jfsPath implements Path {
     private final Neo4jFileSystem fs;
 
     //  The file path to be used for any operation on this path.
-    private final String path;
+    private final Path path;
 
+    private final String pathString;
+
+    /**
+     * Constructor
+     * @param fs Neo4jfs file system for this path.
+     * @param path The detailed path within the file system.
+     */
     public Neo4jfsPath(FileSystem fs, String path) {
         this.fs = (Neo4jFileSystem) fs;
-        this.path = path;
+        this.pathString = path;
+        this.path = Path.of(path);
     }
 
     /**
@@ -26,7 +37,7 @@ public class Neo4jfsPath implements Path {
     }
 
     /**
-     * Paths are always absolute, no concept of "current working directory"
+     * Paths are always absolute, no concept of "current working directory" in Neo4j file system.
      * @return {@code true}
      */
     @Override
@@ -34,54 +45,62 @@ public class Neo4jfsPath implements Path {
         return true;
     }
 
+    /**
+     * Neo4Jfs paths are absolute not relative therefore root is always "/"
+     * @return Root path for file system
+     */
     @Override
     public Path getRoot() {
-        return null;
+        return fs.getRootPath();
     }
 
     @Override
     public Path getFileName() {
-        return null;
+        if (path.getNameCount() > 0) {
+            return new Neo4jfsPath(fs, path.getFileName().toString());
+        } else {
+            return new Neo4jfsPath(fs, Neo4jfsConstants.NAME_ROOT_DIRECTORY);
+        }
     }
 
     @Override
     public Path getParent() {
-        return null;
+        return new Neo4jfsPath(fs, path.getParent().toString());
     }
 
     @Override
     public int getNameCount() {
-        return 0;
+        return path.getNameCount();
     }
 
     @Override
     public Path getName(int index) {
-        return null;
+        return new Neo4jfsPath(fs, path.getName(index).toString());
     }
 
     @Override
     public Path subpath(int beginIndex, int endIndex) {
-        return null;
+        return new Neo4jfsPath(fs, path.subpath(beginIndex, endIndex).toString());
     }
 
     @Override
     public boolean startsWith(Path other) {
-        return false;
+        return path.startsWith(other);
     }
 
     @Override
     public boolean endsWith(Path other) {
-        return false;
+        return path.endsWith(other);
     }
 
     @Override
     public Path normalize() {
-        return null;
+        return new Neo4jfsPath(fs, path.normalize().toString());
     }
 
     @Override
     public Path resolve(Path other) {
-        return null;
+        return new Neo4jfsPath(fs, path.resolve(other).toString());
     }
 
     @Override
@@ -91,17 +110,17 @@ public class Neo4jfsPath implements Path {
 
     @Override
     public URI toUri() {
-        return fs.getUri().resolve(path);
+        return fs.getUri().resolve(pathString);
     }
 
     @Override
     public Path toAbsolutePath() {
-        return null;
+        return this;
     }
 
     @Override
     public Path toRealPath(LinkOption... options) throws IOException {
-        return null;
+        return this;
     }
 
     @Override
@@ -116,16 +135,16 @@ public class Neo4jfsPath implements Path {
 
     @Override
     public boolean equals(Object other) {
-        return false;
+        return Objects.equals(this, other);
     }
 
     @Override
     public int hashCode() {
-        return 0;
+        return Objects.hash(fs, pathString);
     }
 
     @Override
     public String toString() {
-        return "";
+        return path.toString();
     }
 }

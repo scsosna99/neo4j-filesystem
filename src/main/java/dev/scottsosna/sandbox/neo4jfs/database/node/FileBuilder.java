@@ -1,7 +1,5 @@
 package dev.scottsosna.sandbox.neo4jfs.database.node;
 
-import java.time.Instant;
-
 public class FileBuilder {
 
     private String name;

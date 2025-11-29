@@ -292,7 +292,7 @@ public class Neo4jfsTreeWalker implements Closeable {
         //  Process all files in a directory before navigating to subdirectories.
         if (current.files.hasNext()) {
             FileEntry fe = current.files.next();
-            URI uri = URI.create(current.uri.toString() + DirectoryService.SEPARATOR + fe.getName());
+            URI uri = buildWithChild(current.uri, fe.getName());
             return new NeofjfsWalkerEvent(EventType.FILE, current.dir, fe, uri, null);
         }
 
@@ -337,7 +337,7 @@ public class Neo4jfsTreeWalker implements Closeable {
             DirectoryEntry subdir = current.subdirs.next();
 
             //  Construct URI for subdirectory and attempt to retrieve.
-            URI uri = URI.create(current.uri.toString() + DirectoryService.SEPARATOR + subdir.getName());
+            URI uri = buildWithChild(current.uri, subdir.getName());
             BaseEntry subdirEntry = getStartingEntry(uri);
 
             //  Entry retrieve _should_ be a directory, but just in case...
@@ -352,7 +352,7 @@ public class Neo4jfsTreeWalker implements Closeable {
                 stack.push(new Neo4jfsWalkerData(uri, subdirAndChildren, LIMIT_CHILDREN_PER_CALL));
 
                 //  Return event for starting a new directory.
-                URI eventUri = URI.create(current.uri + DirectoryService.SEPARATOR + subdirEntry.getName());
+                URI eventUri = buildWithChild(current.uri, subdirEntry.getName());
                 return new NeofjfsWalkerEvent(EventType.ENTER_DIRECTORY, subdirAndChildren, null, eventUri, null);
             } else {
                 //  Indicates a corrupted tree/graph, most likely duplicately named directories or files exist.  Bad.
@@ -361,6 +361,21 @@ public class Neo4jfsTreeWalker implements Closeable {
         }
 
         return null;
+    }
+
+
+    /**
+     * Correctly build a URI, accounting for starting at root where concatenating separator not needed.
+     * @param current current URI
+     * @param childName name of the subdirectory or file in directory.
+     * @return new URI with the subdirectory.
+     */
+    private URI buildWithChild(URI current, String childName) {
+        if (current.getPath().endsWith(DirectoryService.SEPARATOR)) {
+            return URI.create(current + childName);
+        } else {
+            return URI.create(current + DirectoryService.SEPARATOR + childName);
+        }
     }
 
     @Override

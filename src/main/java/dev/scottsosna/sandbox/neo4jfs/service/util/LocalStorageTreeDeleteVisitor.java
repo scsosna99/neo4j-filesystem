@@ -1,7 +1,5 @@
 package dev.scottsosna.sandbox.neo4jfs.service.util;
 
-import org.springframework.stereotype.Component;
-
 import java.io.IOException;
 import java.nio.file.FileVisitResult;
 import java.nio.file.Path;
