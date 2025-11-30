@@ -4,9 +4,11 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.EnableAspectJAutoProxy;
 import org.springframework.context.annotation.aspectj.EnableSpringConfigured;
+import org.springframework.scheduling.annotation.EnableScheduling;
 
 @Configuration
 @EnableSpringConfigured
+@EnableScheduling
 @EnableAspectJAutoProxy(proxyTargetClass = true)
 public class Neo4jfsConfiguration {
 

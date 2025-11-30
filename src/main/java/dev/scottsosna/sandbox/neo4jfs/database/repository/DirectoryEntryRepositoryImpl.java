@@ -58,6 +58,10 @@ public class DirectoryEntryRepositoryImpl extends BaseEntryRepositoryImpl implem
         return d;
     }
 
+    public boolean pathExists(URI uri) {
+        return !queryPath(uri).isEmpty();
+    }
+
     public DirectoryEntry findRoot(URI uri) {
         List<DirectoryEntry> d = query(uri, "MATCH(r:Directory {name: '/', root:true}) RETURN r", DirectoryEntry.class);
         return (d.isEmpty() ? null : d.getFirst());
@@ -76,10 +80,6 @@ public class DirectoryEntryRepositoryImpl extends BaseEntryRepositoryImpl implem
         return results.isEmpty() ? null : results.getFirst();
     }
 
-    public DirectoryEntry getParentWithChildren(URI uri, String parentId) {
-        return getParentWithChildren(uri, parentId, 0, Integer.MAX_VALUE);
-    }
-
     public BaseEntry parent(URI uri) {
         return queryLeaf(uri, Path.of(uri).getParent());
     }
@@ -90,10 +90,6 @@ public class DirectoryEntryRepositoryImpl extends BaseEntryRepositoryImpl implem
 
     private List<BaseEntry> queryPath(URI uri) {
         return queryPath(uri, Path.of(uri));
-    }
-
-    private List<BaseEntry> queryPathParent(URI uri) {
-        return queryPath(uri, Path.of(uri).getParent());
     }
 
     private List<BaseEntry> queryPath(URI uri, Path path) {

@@ -9,4 +9,5 @@ public interface FileService  {
     void create (URI uri, InputStream inputStream) throws IOException;
     void create (URI uri, File sourceFile) throws IOException;
     void delete (URI uri) throws IOException;
+    void delete (URI uri, String nodeId) throws IOException;
 }

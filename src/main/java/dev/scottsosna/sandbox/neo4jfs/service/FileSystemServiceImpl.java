@@ -6,14 +6,12 @@ import dev.scottsosna.sandbox.neo4jfs.database.model.neo4j.DatabaseStatusType;
 import dev.scottsosna.sandbox.neo4jfs.database.model.neo4j.DatabaseType;
 import dev.scottsosna.sandbox.neo4jfs.database.repository.DatabaseRepository;
 import jakarta.annotation.PostConstruct;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.io.File;
 import java.net.URI;
-import java.nio.file.FileSystem;
-import java.nio.file.FileSystems;
-import java.nio.file.Files;
-import java.nio.file.Path;
+import java.nio.file.*;
 import java.util.Map;
 
 @Service
@@ -43,7 +41,7 @@ public class FileSystemServiceImpl extends BaseNeo4jfsService implements FileSys
      * @param uri base URI for the file system.
      */
     public void init(URI uri) {
-        checkSchema(uri);
+        checkUri(uri);
 
         //  Does a database exist for the partition?
         Database db = repository.find(uri);
@@ -93,30 +91,46 @@ public class FileSystemServiceImpl extends BaseNeo4jfsService implements FileSys
         if (db.getCurrentStatus() != DatabaseStatusType.ONLINE) throw new RuntimeException("Database must be online.");
     }
 
-    @PostConstruct
+    @Scheduled(initialDelay = 2000L)
     public void test() {
         try {
-            try (FileSystem fs = FileSystems.newFileSystem(URI.create("neo4jfs://scsosna123/"),
+            try (FileSystem fs = FileSystems.newFileSystem(URI.create("neo4jfs://scsosna99/"),
                 Map.of(FileSystemService.class.getName(), this, DirectoryService.class.getName(), directoryService))) {
-                Path path = Path.of(new URI("neo4jfs://scsosna123/abc/def/ghi"));
-                Files.delete(path);
-            }
+                Files.createDirectory(fs.getPath("/scs1"));
+                Files.createDirectory(fs.getPath("/scs1/scs2"));
 
-            drop(URI.create("neo4jfs://scsosna123/"));
-            drop(URI.create("neo4jfs://scsosna345/"));
+                fileService.create(new URI("neo4jfs://scsosna99/myRootFile"), new File("/Users/scsosna/data/music/manu/viva_la_colifata/1_02_Sabias_Palabras.mp3"));
+                directoryService.mkdir(new URI("neo4jfs://scsosna99/abc"));
+                fileService.create(new URI("neo4jfs://scsosna99/abc/myFirstFile"), new File("/Users/scsosna/data/music/manu/viva_la_colifata/1_02_Sabias_Palabras.mp3"));
+                directoryService.mkdir(new URI("neo4jfs://scsosna99/def"));
+                directoryService.mkdir(new URI("neo4jfs://scsosna99/def/hij"));
+                directoryService.mkdir(new URI("neo4jfs://scsosna99/def/klm"));
+                fileService.create(new URI("neo4jfs://scsosna99/def/mySecondFile"), new File("/Users/scsosna/data/music/manu/viva_la_colifata/1_02_Sabias_Palabras.mp3"));
+                fileService.create(new URI("neo4jfs://scsosna99/def/myThirdFile"), new File("/Users/scsosna/data/music/manu/viva_la_colifata/1_02_Sabias_Palabras.mp3"));
+                System.out.println("completed");
 
-            init(new URI("neo4jfs://scsosna99/"));
-            fileService.create(new URI("neo4jfs://scsosna99/myRootFile"), new File("/Users/scsosna/data/music/manu/viva_la_colifata/1_02_Sabias_Palabras.mp3"));
-            directoryService.mkdir(new URI("neo4jfs://scsosna99/abc"));
-            fileService.create(new URI("neo4jfs://scsosna99/abc/myFirstFile"), new File("/Users/scsosna/data/music/manu/viva_la_colifata/1_02_Sabias_Palabras.mp3"));
-            directoryService.mkdir(new URI("neo4jfs://scsosna99/def"));
-            directoryService.mkdir(new URI("neo4jfs://scsosna99/def/hij"));
-            directoryService.mkdir(new URI("neo4jfs://scsosna99/def/klm"));
-            fileService.create(new URI("neo4jfs://scsosna99/def/mySecondFile"), new File("/Users/scsosna/data/music/manu/viva_la_colifata/1_02_Sabias_Palabras.mp3"));
-            fileService.create(new URI("neo4jfs://scsosna99/def/myThirdFile"), new File("/Users/scsosna/data/music/manu/viva_la_colifata/1_02_Sabias_Palabras.mp3"));
-            System.out.println("completed");
-            directoryService.dumpTree(new URI("neo4jfs://scsosna99/"));
-            drop(new URI("neo4jfs://scsosna99/"));
+                Files.copy(Path.of("/Users/scsosna/data/music/manu/viva_la_colifata/1_02_Sabias_Palabras.mp3"), fs.getPath("/abc/random.mp3"));
+
+//                Files.createDirectories(fs.getPath("/scs1/scs2/scs3"));
+//                Files.delete(fs.getPath("/abc/myFirstFile"));
+//                Files.deleteIfExists(fs.getPath("/abc/myFirstFile"));
+
+                //  Renaming file/directory in place.
+//                Files.move(fs.getPath("/abc"), fs.getPath("/abc"));
+//                Files.move(fs.getPath("/abc"), fs.getPath("/xyz"));
+//                Files.move(fs.getPath("/myRootFile"), fs.getPath("/myRootFile"));
+//                Files.move(fs.getPath("/myRootFile"), fs.getPath("/myRootFileRenamed"));
+//                Files.move(fs.getPath("/xyz"), fs.getPath("/scs1"), StandardCopyOption.REPLACE_EXISTING);
+//                Files.move(fs.getPath("/def/hij"), fs.getPath("/def/mySecondFile"), StandardCopyOption.REPLACE_EXISTING);
+//                Files.move(fs.getPath("/def/myThirdFile"), fs.getPath("/def/klm"), StandardCopyOption.REPLACE_EXISTING);
+
+                //  Moving file/directory
+                Files.move(fs.getPath("/def/mySecondFile"), fs.getPath("/abc"));
+                Files.move(fs.getPath("/def/myThirdFile"), fs.getPath("/abc/movedThirdFile"));
+                Files.move(fs.getPath("/abc"), fs.getPath("/scs1/abc"));
+                Files.move(fs.getPath("/scs1/abc/myThirdFile"), fs.getPath("/myRootFile"), StandardCopyOption.REPLACE_EXISTING);
+                Files.move(fs.getPath("/scs1/abc"), fs.getPath("/def/hij"), StandardCopyOption.REPLACE_EXISTING);
+                System.out.println("completed");
 
 
 //            directoryService.mkdir(new URI("neo4jfs://scsosna98/abc/def"));
@@ -124,9 +138,16 @@ public class FileSystemServiceImpl extends BaseNeo4jfsService implements FileSys
 //            directoryService.mkdir(new URI("neo4jfs://scsosna98/abc/def/qqq"));
 //            var p = directoryService.parent(new URI("neo4jfs://scsosna98/abc/def/qqq"));
 //            System.out.println(p);
+            }
         } catch (Exception e) {
             System.out.println(e.getMessage());
             e.printStackTrace();
+        } finally {
+            try {
+                drop(new URI("neo4jfs://scsosna99/"));
+            } catch (Exception e) {
+
+            }
         }
     }
 }

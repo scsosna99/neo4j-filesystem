@@ -31,4 +31,8 @@ public class FileEntryRepositoryImpl extends BaseEntryRepositoryImpl implements 
     public boolean delete(URI uri, String fileNodeId) {
         return deleteNodeById(uri, fileNodeId);
     }
+
+    public FileEntry load(URI uri, String fileNodeId) {
+        return load(uri, fileNodeId, FileEntry.class);
+    }
 }

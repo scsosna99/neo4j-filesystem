@@ -6,16 +6,19 @@ import dev.scottsosna.sandbox.neo4jfs.database.node.FileEntry;
 
 import java.io.IOException;
 import java.net.URI;
+import java.nio.file.CopyOption;
 import java.nio.file.FileVisitor;
 import java.util.List;
 
 public interface DirectoryService {
     String SEPARATOR = "/";
 
+    boolean exists(URI uri);
     DirectoryEntry createRoot (URI uri);
     DirectoryEntry findOrCreateRoot(URI uri);
     DirectoryEntry mkdir (URI uri);
     void delete(URI uri) throws IOException;
+    void move(URI fromUri, URI toParentUri, CopyOption... options) throws IOException;
     void rmdir(URI uri) throws IOException;
     void rmdirRecursively(URI uri) throws IOException;
     void dumpTree(URI uri);

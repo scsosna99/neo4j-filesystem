@@ -38,6 +38,14 @@ public class Neo4jFileSystemProvider extends FileSystemProvider {
         return Neo4jfsConstants.NEO4JFS_URI_SCHEME;
     }
 
+    /**
+     * Creates a new Neo4jfs file system.
+     * @param uri URI reference
+     * @param env A map of provider specific properties to configure the file system; may be empty
+     *
+     * @return newly generated file system
+     * @throws IOException if the file system has been previously created.
+     */
     @Override
     public FileSystem newFileSystem(URI uri, Map<String, ?> env) throws IOException {
         fileSystemService = (FileSystemService) env.get(FileSystemService.class.getName());
@@ -112,11 +120,23 @@ public class Neo4jFileSystemProvider extends FileSystemProvider {
         return null;
     }
 
+    /**
+     * Create new directory for the path specified.
+     * @param dir the directory to create
+     * @param attrs an optional list of file attributes to set atomically when creating the directory
+     * @throws IOException something bad happens when attempting create.
+     */
     @Override
     public void createDirectory(Path dir, FileAttribute<?>... attrs) throws IOException {
-
+        directoryService.mkdir(dir.toUri());
     }
 
+    /**
+     * Deletes the entry - directory or file - specified by path.
+     * @param path the path to the file to delete
+     *
+     * @throws IOException thrown when delete fails, such as trying to delete non-empty directory.
+     */
     @Override
     public void delete(Path path) throws IOException {
         directoryService.delete(path.toUri());
@@ -127,9 +147,16 @@ public class Neo4jFileSystemProvider extends FileSystemProvider {
 
     }
 
+    /**
+     * Moves a file or directory to a new location.
+     * @param source the path to the file to move
+     * @param target the path to the target file
+     * @param options options specifying how the move should be done
+     * @throws IOException problems moving file or directory.
+     */
     @Override
     public void move(Path source, Path target, CopyOption... options) throws IOException {
-
+        directoryService.move(source.toUri(), target.toUri(), options);
     }
 
     @Override
@@ -170,6 +197,11 @@ public class Neo4jFileSystemProvider extends FileSystemProvider {
     @Override
     public void setAttribute(Path path, String attribute, Object value, LinkOption... options) throws IOException {
 
+    }
+
+    @Override
+    public boolean exists(Path path, LinkOption... options) {
+        return directoryService.exists(path.toUri());
     }
 
     /**

@@ -11,6 +11,7 @@ public interface DirectoryEntryRepository extends BaseEntryRepository {
 
     DirectoryEntry createRoot(URI uri);
     DirectoryEntry create(URI uri, String name);
+    boolean pathExists(URI uri);
     DirectoryEntry getParentWithChildren(URI uri, String parentId, int skip, int limit);
     DirectoryEntry findRoot(URI uri);
     List<BaseEntry> find(URI uri, Path path);

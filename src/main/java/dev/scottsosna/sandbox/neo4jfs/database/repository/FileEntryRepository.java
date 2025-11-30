@@ -8,4 +8,5 @@ public interface FileEntryRepository extends BaseEntryRepository {
 
     FileEntry create(URI uri, String name, String storageId, long size);
     boolean delete(URI uri, String fileNodeId);
+    FileEntry load(URI uri, String fileNodeId);
 }

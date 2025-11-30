@@ -99,7 +99,7 @@ public class Neo4jFileSystem extends FileSystem {
 
     @Override
     public Path getPath(String first, String... more) {
-        return null;
+        return new Neo4jfsPath(this, Path.of(first, more).toString());
     }
 
     @Override

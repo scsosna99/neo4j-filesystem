@@ -32,6 +32,7 @@ public class BaseEntryRepositoryImpl {
     private static final String MATCH_ENTRY = "(d%d {name: $name%d})";
     private static final String QUERY_DIRECTORY_AND_CHILD = "MATCH (p:Directory {id: $id})-[]->(c {name: $name}) RETURN p,c";
     private static final String QUERY_DELETE_NODE = "MATCH (n {id: $id}) DETACH DELETE n";
+    private static final String QUERY_DELETE_RELATIONSHIP = "MATCH (start {id: $startId})-[r]-(end {id: $endId}) DELETE r";
     private static final String RELATIONSHIP_LINK = "-[]->";
 
     protected static final String ROOT_DIRECTORY_NAME = Neo4jfsConstants.NAME_ROOT_DIRECTORY;
@@ -68,6 +69,16 @@ public class BaseEntryRepositoryImpl {
     }
 
     /**
+     * Remove the relationship between two nodes identified by their ids.
+     * @param uri URI of the file system, using host to identify database.
+     * @param startId start node from which outgoing relationship is to be removed
+     * @param endId end node whose incoming relationship is to be removed
+     */
+    public void deleteRelationship(final URI uri, final String startId, final String endId) {
+        getSessionFactory(uri).openSession().query(QUERY_DELETE_RELATIONSHIP, Map.of("startId", startId, "endId", endId));
+    }
+
+    /**
      * Only update last accessed timestamp for entry provided.  To guarantee inadvertent changes to entry aren't
      * accidentally persisted, the entry is loaded first and then updated
      * @param uri URI of the file system, using host to identify database.
@@ -91,6 +102,18 @@ public class BaseEntryRepositoryImpl {
     protected SessionFactory getSessionFactory(URI uri) {
         validate(uri);
         return sessionFactory(uri.getHost());
+    }
+
+    /**
+     * Load an object from Neo4J by its id.
+     * @param uri URI for the file system
+     * @param nodeId id of the node to load
+     * @param clazz the class of the object to load
+     * @return the loaded object
+     * @param <T>
+     */
+    protected <T extends BaseEntry> T load(URI uri, String nodeId, Class<T> clazz) {
+        return getSessionFactory(uri).openSession().load(clazz, nodeId);
     }
 
     /**
@@ -200,7 +223,7 @@ public class BaseEntryRepositoryImpl {
             .append(RELATIONSHIP_LINK)
             .append(MATCH_ENTRY.formatted(index, index));
         queryParams.put("name" + index, entryName);
-        sbReturn.append(", d").append(index);
+        if (sbReturn != null) sbReturn.append(", d").append(index);
     }
 
 

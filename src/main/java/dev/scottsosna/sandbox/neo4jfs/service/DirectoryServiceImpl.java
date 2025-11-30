@@ -10,11 +10,10 @@ import dev.scottsosna.sandbox.neo4jfs.database.repository.util.Neo4jfsFileAttrib
 import dev.scottsosna.sandbox.neo4jfs.database.repository.util.Neo4jfsTreeWalker;
 import org.springframework.stereotype.Service;
 
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.URI;
-import java.nio.file.FileVisitor;
-import java.nio.file.Path;
+import java.nio.file.*;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -100,6 +99,92 @@ public class DirectoryServiceImpl extends BaseNeo4jfsService implements Director
     }
 
     /**
+     * Move file and directory within same file system.
+     * @param fromUri file or directory to move
+     * @param toUri target location.
+     * @param options  options specifying how the move should be done
+     * @throws IOException problems executing the move.
+     */
+    @Override
+    public void move(URI fromUri, URI toUri, CopyOption... options) throws IOException {
+        checkUri(fromUri);
+        checkUri(toUri);
+
+        //  Identical URIs, nothing to do.
+        if (fromUri.equals(toUri)) {
+            return;
+        }
+
+        //  Same parent URI means straight rename.
+        URI fromParentUri = fromUri.resolve(".");
+        URI toParentUri = toUri.resolve(".");
+        if (fromParentUri.equals(toParentUri)) {
+            //  Do straight rename.
+            renameEntry(fromUri, toUri, options);
+            return;
+        }
+
+        //  The from/source must exist as either file or directory.
+        List<BaseEntry> fromParts = prologue(fromUri);
+        BaseEntry fromEntry = fromParts.getLast();
+        if (fromEntry instanceof DirectoryEntry de && de.isRoot()) {
+            throw new AccessDeniedException("%s: Root directory cannot be moved".formatted(fromUri));
+        }
+        DirectoryEntry fromParent = (DirectoryEntry) fromParts.get(fromParts.size() - 2);
+
+        //  The destination/target _may_ exist; if not, it's parent must as a directory.
+        List<BaseEntry> toParts = null;
+        BaseEntry toEntry = null;
+        try {
+            toParts = prologue(toUri);
+            toEntry = toParts.getLast();
+        } catch (NoSuchFileException nsfe) {
+            //  Destination doesn't exist, so its parent must and must be directory.
+            toParts = prologue(toParentUri);
+            toEntry = toParts.getLast();
+            if (toEntry instanceof FileEntry) {
+                //  Parent exists but it's a file.
+                throw new NotDirectoryException("%s: Not a directory".formatted(toUri));
+            }
+        }
+
+        //  Based on from/to entry types, determine course of action.
+        switch (fromEntry) {
+            //  Source is file.
+            case FileEntry fe1:
+                switch (toEntry) {
+                    //  Target is file.
+                    case FileEntry fe2:
+                        moveFileWork(fromUri, fe1, fromParent, fe2, (DirectoryEntry) toParts.get(toParts.size() - 2), toUri, options);
+                        break;
+                    //  Target id directory.
+                    case DirectoryEntry de2:
+                        moveFileWork(fromUri, fe1, fromParent, null, de2, toUri, options);
+                        break;
+                    default:
+                        throw new RuntimeException("%s: Unknown node type".formatted(toUri));
+                }
+                break;
+            //  Source is directory.
+            case DirectoryEntry de:
+                switch (toEntry) {
+                    //  Target is file.
+                    case FileEntry fe2:
+                        //  Can't move directory to already existing file.
+                        throw new NotDirectoryException("%s: Not a directory".formatted(toUri));
+                    //  Target is directory.
+                    case DirectoryEntry de2:
+                        moveFileWork(fromUri, de, fromParent, null, de2, toUri, options);
+                        break;
+                    default:
+                        throw new RuntimeException("%s: Unknown node type".formatted(toUri));
+                }
+                break;
+            default:
+                throw new RuntimeException("%s: Unknown node type".formatted(fromUri));
+        }
+    }
+    /**
      * Deletes (removes) an empty directory specified by URI, similar to *nix {@code rmdir} command
      * @param uri Neo4jfs URI specifying directory to delete
      * @throws IOException an error occurred, such as directory not empty.
@@ -127,7 +212,7 @@ public class DirectoryServiceImpl extends BaseNeo4jfsService implements Director
         BaseEntry lastPart = parts.getLast();
         switch(lastPart) {
             case FileEntry f:
-                //  Following pattern used by file-based file system where "rmrecursively" implies straight
+                //  Following pattern used by file-based file system where "rmdir recursively" implies straight
                 //  file delete.
                 fileService.delete(uri);
                 break;
@@ -172,6 +257,64 @@ public class DirectoryServiceImpl extends BaseNeo4jfsService implements Director
         return d;
     }
 
+    public boolean exists(URI uri) {
+        checkUri(uri);
+        return repository.pathExists(uri);
+    }
+
+    /**
+     * Moves file from one directory to another.
+     * @param fsUri Neo4jfs URI for the specific partion.
+     * @param from source file being moved
+     * @param fromParent parent directory of source file
+     * @param to when not null, target file being replaced as part of move
+     * @param toParent parent directory of target file
+     * @param options copy options to apply
+     * @throws IOException something bad has happened and move can't proceed.
+     */
+    private void moveFileWork(final URI fsUri,
+                              final BaseEntry from,
+                              final DirectoryEntry fromParent,
+                              final FileEntry to,
+                              final DirectoryEntry toParent,
+                              final URI toUri,
+                              CopyOption... options) throws IOException {
+
+        //  If a to/destination file exists, move fails UNLESS options say overwriting is OK.
+        if (to != null && !checkForOption(StandardCopyOption.REPLACE_EXISTING, options)) {
+            throw new FileAlreadyExistsException(to.getName());
+        }
+
+        //  Add the to/source file to the to/destination directory.
+        switch (from) {
+            case FileEntry fe:
+                toParent.setFiles(List.of(fe));
+                break;
+            case DirectoryEntry de:
+                toParent.setSubdirs(List.of(de));
+                break;
+            default:
+                throw new RuntimeException("%s: Unknown node type".formatted(from.getClass().getName()));
+        }
+        repository.save(fsUri, toParent);
+
+        //  Remove the from/source file from the from/source directory.
+        repository.deleteRelationship(fsUri, fromParent.getId(), from.getId());
+
+        //  Final step is to delete the original to/destination file if it existed.
+        if (to != null) {
+            fileService.delete(fsUri, to.getId());
+        }
+
+        String targetName = Path.of(toUri).getFileName().toString();
+        if (!from.getName().equals(targetName)) {
+            //  Rename the node.
+            from.setName(targetName);
+            repository.save(fsUri, from, BaseEntry.class);
+        }
+
+    }
+
     /**
      * Initial steps for a number of operations where the tree is required before proceeding
      * @param uri Neo4jfs URI for the directory path on which to operate
@@ -184,25 +327,63 @@ public class DirectoryServiceImpl extends BaseNeo4jfsService implements Director
         //  Confirm path existence.
         List<BaseEntry> parts = find(uri);
         if (parts.isEmpty()) {
-            throw new FileNotFoundException("%s: no such file or directory".formatted(uri));
+            throw new NoSuchFileException("%s: no such file or directory".formatted(uri));
         }
 
         return parts;
     }
 
-    private void rmdirWork(URI uri, BaseEntry lastPart) throws IOException {
-        if (!(lastPart instanceof DirectoryEntry)) {
-            throw new RuntimeException("%s: Not a directory".formatted(uri));
+    private void renameEntry(URI fromUri, URI toUri, CopyOption... options) throws IOException {
+
+        //  Get the requested node to rename.
+        List<BaseEntry> fromParts = prologue(fromUri);
+
+        boolean toExists = repository.pathExists(toUri);
+        if (toExists) {
+            //  It a file or directory already exists with the target name, options must be provided
+            //  that allows replacing the original (essentially deleting it).
+            if (!checkForOption(StandardCopyOption.REPLACE_EXISTING, options)) {
+                throw new FileAlreadyExistsException("%s: file exists".formatted(toUri));
+            }
+
+            //  Target must be deleted before we rename the source node.  When the existing node is a
+            //  directory, recursively subtree and delete everything underneath.
+            rmdirRecursively(toUri);
         }
 
-        //  Only empty directories are deleted/removed.
-        DirectoryEntry entry = repository.getParentWithChildren(uri, lastPart.getId(), 0, 2);
-        if (entry == null ||
-            ((entry.getFiles() == null || entry.getFiles().isEmpty()) &&
-                (entry.getSubdirs() == null || entry.getSubdirs().isEmpty()))) {
-            repository.delete(uri, lastPart.getId());
+        //  Rename the node.
+        BaseEntry entry = fromParts.getLast();
+        entry.setName(Path.of(toUri).getFileName().toString());
+        repository.save(fromUri, entry, BaseEntry.class);
+    }
+
+    /**
+     * Where the real work of deleting a directory happens
+     * @param uri file system's URI by specifying the partition
+     * @param lastPart the specific entry to delete
+     * @throws IOException not a directory, directory not empty, etc.
+     */
+    private void rmdirWork(URI uri, BaseEntry lastPart) throws IOException {
+
+        //  By this point, must be a directory to proceed.
+        if (lastPart instanceof DirectoryEntry d) {
+
+            //  Root directory cannot be deleted.
+            if (d.isRoot()) {
+                throw new RuntimeException("%s: Root directory cannot be deleted".formatted(uri));
+            }
+
+            //  Only empty directories are deleted/removed.
+            DirectoryEntry entry = repository.getParentWithChildren(uri, lastPart.getId(), 0, 2);
+            if (entry == null ||
+                ((entry.getFiles() == null || entry.getFiles().isEmpty()) &&
+                    (entry.getSubdirs() == null || entry.getSubdirs().isEmpty()))) {
+                repository.delete(uri, lastPart.getId());
+            } else {
+                throw new RuntimeException("%s: Directory not empty".formatted(uri));
+            }
         } else {
-            throw new RuntimeException("%s: Directory not empty".formatted(uri));
+            throw new RuntimeException("%s: Not a directory".formatted(uri));
         }
     }
 
@@ -249,6 +430,16 @@ public class DirectoryServiceImpl extends BaseNeo4jfsService implements Director
     private void walkFileTree(URI uri, String fileVisitorKey) {
         checkUri(uri);
         walkFileTree(uri, visitorMap.get(fileVisitorKey));
+    }
+
+    /**
+     * Checked for requested copy option in options passed to initial call
+     * @param requested the copy option requested
+     * @param options variable list of options
+     * @return true if found, false otherwise
+     */
+    private boolean checkForOption(CopyOption requested, CopyOption... options) {
+        return options != null && Arrays.stream(options).anyMatch(requested::equals);
     }
 
     public void registerVisitor(final String key, final FileVisitor visitor) {

@@ -74,22 +74,34 @@ public class FileServiceImpl extends BaseNeo4jfsService implements FileService {
             throw new RuntimeException("%s: no such file or directory".formatted(uri));
         }
 
-        if (parts.get(parts.size() - 1) instanceof FileEntry f) {
-            //  Delete the node first and then the file.
-            if (!repository.delete(uri, f.getId())) {
-                throw new RuntimeException("Unable to delete file entry.");
-            }
-
-            //  Not ideal if file can't be deleted from storage manager but, as far as file system knows,
-            //  the file is gone and inaccessible because the node has been deleted.  Probably need a util
-            //  to clean up orphaned files.
-            try {
-                storageManager.deleteFile(f.getStorageId());
-            } catch (Exception e) {
-                System.out.println("Unable to delete file from storage manager." + e);
-            }
+        if (parts.getLast() instanceof FileEntry f) {
+            deleteWork(uri, f);
         } else {
             throw new RuntimeException("%s: Not a file".formatted(uri));
+        }
+    }
+
+    @Override
+    public void delete(URI uri, String nodeId) throws IOException {
+        checkUri(uri);
+        FileEntry file = repository.load(uri, nodeId);
+        deleteWork(uri, file);
+    }
+
+    private void deleteWork(URI uri, FileEntry file) throws IOException {
+
+        //  Delete the node first and then the file.
+        if (!repository.delete(uri, file.getId())) {
+            throw new RuntimeException("Unable to delete file entry.");
+        }
+
+        //  Not ideal if file can't be deleted from storage manager but, as far as file system knows,
+        //  the file is gone and inaccessible because the node has been deleted.  Probably need a util
+        //  to clean up orphaned files.
+        try {
+            storageManager.deleteFile(file.getStorageId());
+        } catch (Exception e) {
+            System.out.println("Unable to delete file from storage manager." + e);
         }
     }
 
