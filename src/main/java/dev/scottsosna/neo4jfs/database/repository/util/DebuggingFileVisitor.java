@@ -1,14 +1,54 @@
 package dev.scottsosna.neo4jfs.database.repository.util;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.IOException;
 import java.nio.file.FileVisitResult;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
 
+/**
+ * For debugging purposes, debug logs the directory structure as visited by tree walker.
+ *
+ * @see java.nio.file.FileVisitor
+ * @see Neo4jfsTreeWalker
+ */
 public class DebuggingFileVisitor extends SimpleFileVisitor<Neo4jfsTreeWalker.NeofjfsWalkerEvent> {
 
     //  How many directories deep are we.
     private int depth = 0;
+
+    //  Logger used for printing out directory structure.
+    private static final Logger logger = LoggerFactory.getLogger(DebuggingFileVisitor.class);
+
+    //  Format used for SLF4J using substitution parameters.
+    private static final String SLF4J_FORMAT = "{}{} {}";
+
+    // Pre-built strings for indentation, more performant than repeatedly generating them.
+    private static final String[] LEADING_SPACES = {
+        "",
+        "  ",
+        "    ",
+        "      ",
+        "        ",
+        "          ",
+        "            ",
+        "              ",
+        "                ",
+        "                  ",
+        "                    ",
+        "                      ",
+        "                        ",
+        "                          ",
+        "                            ",
+        "                              ",
+        "                                ",
+        "                                  ",
+        "                                    ",
+        "                                      ",
+        "                                        "
+    };
 
     /**
      * Delete every file found in the directory
@@ -22,7 +62,7 @@ public class DebuggingFileVisitor extends SimpleFileVisitor<Neo4jfsTreeWalker.Ne
         throws IOException
     {
         depth++;
-        System.out.printf(formatIndent(), "FILE", file.getUri());
+        logger.debug(SLF4J_FORMAT, indent(depth), "FILE", file.getUri());
         depth--;
         return FileVisitResult.CONTINUE;
     }
@@ -36,7 +76,7 @@ public class DebuggingFileVisitor extends SimpleFileVisitor<Neo4jfsTreeWalker.Ne
     @Override
     public FileVisitResult preVisitDirectory(Neo4jfsTreeWalker.NeofjfsWalkerEvent dir, BasicFileAttributes attrs) throws IOException{
         depth++;
-        System.out.printf(formatIndent(), "--->", dir.getUri());
+        logger.debug(SLF4J_FORMAT, indent(depth), "--->", dir.getUri());
         return FileVisitResult.CONTINUE;
     }
 
@@ -52,7 +92,7 @@ public class DebuggingFileVisitor extends SimpleFileVisitor<Neo4jfsTreeWalker.Ne
         throws IOException
     {
         if (e == null) {
-            System.out.printf(formatIndent(), "<---", dir.getUri());
+            logger.debug(SLF4J_FORMAT, indent(depth), "<---", dir.getUri());
             depth--;
             return FileVisitResult.CONTINUE;
         } else {
@@ -62,10 +102,9 @@ public class DebuggingFileVisitor extends SimpleFileVisitor<Neo4jfsTreeWalker.Ne
     }
 
     /**
-     * Creates a dynamic printf string to imply depth through indentation.
-     * @return printf string
+     * @return leading spaces based on depth.
      */
-    private String formatIndent() {
-        return (depth == 0) ? "%s %s\n" :"%" + (depth * 4) + "s %s\n";
+    private static String indent(int depth) {
+        return (depth < LEADING_SPACES.length) ? LEADING_SPACES[depth] : LEADING_SPACES[LEADING_SPACES.length - 1];
     }
 }
