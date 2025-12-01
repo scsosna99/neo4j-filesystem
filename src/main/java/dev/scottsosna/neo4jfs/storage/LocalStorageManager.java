@@ -5,6 +5,8 @@ import dev.scottsosna.neo4jfs.database.model.storage.StorageFileInfo;
 import dev.scottsosna.neo4jfs.service.util.LocalStorageTreeDeleteVisitor;
 import dev.scottsosna.neo4jfs.storage.util.CallbackOutputStream;
 import jakarta.annotation.PostConstruct;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -19,6 +21,13 @@ import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.UUID;
 
+/**
+ * Storage Manager implementation that uses local disk for file management.
+ *
+ * Each Neo4Jfs instance has its own "partition" - the URI host - to segregate and manage files separately, providing
+ * protection from cross-instance/cross-partition file access/modifications.  The internal file names are random UUIDs.
+ * For scaling/performance, files are stored in subdirectories based on the first two characters of the UUID.
+ */
 @Service("local")
 public class LocalStorageManager implements StorageManager {
 
@@ -26,14 +35,17 @@ public class LocalStorageManager implements StorageManager {
     @Value("${neo4jis.local.directory:#{null}}")
     private String neo4jfsBasePath;
 
+    //  Visitor that handles deleting files/directories bottom up as tree is walked.
     private final FileVisitor<Path> treeDeleteVisitor = new LocalStorageTreeDeleteVisitor();
 
+    private final static Logger logger = LoggerFactory.getLogger(LocalStorageManager.class);
+
     /**
-     * Initialize a storage partition by ensuring directory exists.
-     * @param uri
+     * Initializes partition for the file system specified by URI.
+     * @param fsUri base Neo4Jfs URI
      */
-    public void initPartition(URI uri) throws IOException {
-        File partition = Path.of(neo4jfsBasePath, determinePartition(uri)).toFile();
+    public void initPartition(URI fsUri) throws IOException {
+        File partition = Path.of(neo4jfsBasePath, determinePartition(fsUri)).toFile();
         if (!partition.exists()) {
             partition.mkdirs();
         } else if (!partition.isDirectory()) {
@@ -43,20 +55,16 @@ public class LocalStorageManager implements StorageManager {
     }
 
     /**
-     * Neo4Jfs being deleted, therefore delete all files in its partition
-     * @param uri URI of Neo4Jfs filesystem
+     * A specific Neo4Jfs partition (instance) is being deleted, delete all files in partition
+     * @param fsUri base Neo4Jfs URI
      */
-    public void dropPartition(URI uri) throws IOException {
-        Path partition = Path.of(neo4jfsBasePath, determinePartition(uri));
-        try {
-            Files.walkFileTree(partition, treeDeleteVisitor);
-        } catch (IOException e) {
-            throw new RuntimeException("Unable to delete partition from local storage.", e);
-        }
+    public void dropPartition(URI fsUri) throws IOException {
+        Path partition = Path.of(neo4jfsBasePath, determinePartition(fsUri));
+        Files.walkFileTree(partition, treeDeleteVisitor);
     }
 
     /**
-     * Creates an empty file for Neo4J file system
+     * Creates empty Neo4Jfs file to be managed by Storage Manager
      * @param uri URI for the Neo4Jfs file
      * @return file details, including storage id (relative path)
      * @throws IOException unable to create file
@@ -71,34 +79,35 @@ public class LocalStorageManager implements StorageManager {
     }
 
     /**
-     * Creates new file from input stream
-     * @param uri URI for the Neo4Jfs file
+     * Create new Neo4Jfs file to be managed by Storage Manager.
+     * @param uri complete URI of the Neo4Jfs file
      * @param is input stream for the file contents
      * @return file details, including storage id (relative path) and size
      * @throws IOException unable to create/persist file
      */
     @Override
     public StorageFileInfo createFile(URI uri, InputStream is) throws IOException {
+        //  Create path, verify/create subdirectory.
         Path relativePath = generateRelativePath(uri);
         Path completePath = generateCompletePath(relativePath);
         verifySubdirectory(completePath);
-        try {
-            long bytes = Files.copy(is, completePath, StandardCopyOption.REPLACE_EXISTING);
-            System.out.println("Saved " + bytes + " bytes to " + completePath);
-            return new StorageFileInfo(relativePath.toString(), bytes);
-        } catch (IOException e) {
-            throw new RuntimeException("Unable to save file to local storage.", e);
-        }
+
+        //  Copy data from input stream to file.
+        long bytes = Files.copy(is, completePath, StandardCopyOption.REPLACE_EXISTING);
+        logger.info("Saved {} bytes to {}", bytes, completePath);
+        return new StorageFileInfo(relativePath.toString(), bytes);
     }
 
     /**
-     * Updates an existing file in Neo4Jfs. In an attempt to not lose data, the new version of the file
-     * is saved before the existing is deleted.  This implies that the updated file has a new "storage id"
-     * returned which is stored in Neo4jFS
-     * @param uri Neo4Jfs filesystem URI
-     * @param storageId the existing storage id to be replaced.
+     * Updates an existing file in Neo4Jfs.
+     *
+     * To avoid losing data, the updated/replaced file is saved and then the existing is deleted.  A side-effect is
+     * that the updated file has a new "storage id" which requires the owning FileEntry to be updated.
+     *
+     * @param uri Neo4Jfs file URI
+     * @param storageId implementation-specific identifier for the file to be updated
      * @param is from where data is streamed
-     * @return file details, including storage id (relative path) and size
+     * @return details for updated file, including storage id (relative path) and size
      */
     @Override
     public StorageFileInfo updateFile(URI uri, String storageId, InputStream is) throws IOException {
@@ -108,61 +117,76 @@ public class LocalStorageManager implements StorageManager {
 
         //  Delete original after storing updated version, ignoring exceptions which don't really affect
         //  the overall results (other than dangling files left behind).
-        try {
-            deleteFile(storageId);
-        } catch (Exception e) {
-            System.out.println("Unable to delete replaced file.");
-        }
+        deleteFile(uri, storageId);
 
         //  Return the new storage id
         return info;
     }
 
     /**
-     * Returns file details for a specific storage id.
-     * @param uri Neo4Jfs filesystem URI
-     * @param storageId specifies file of interest
-     * @return the file info
+     * Copy existing file already managed by StorageManager, most likely due to file system copy.
+     * @param fsUri base Neo4Jfs URI
+     * @param storageId implementation-specific identifier for the file to be copied.
+     * @return details for new file, including storage id (relative path) and size
+     * @throws IOException file was unabled to be copied.
+     */
+    public StorageFileInfo copyFile(URI fsUri, String storageId) throws IOException{
+
+        //  Create path for source (existing) and target (new) files.
+        Path source = generateCompletePath(Path.of(storageId));
+        Path destination = generateCompletePath(generateRelativePath(fsUri));
+        verifySubdirectory(destination);
+
+        //  Attempt to copy file
+        Files.copy(source, destination);
+
+        return getFileInfo(fsUri, destination.toString());
+    }
+
+    /**
+     * Provide details about file managed by Storage Manager, based on storage id.
+     * @param fsUri Neo4Jfs filesystem URI
+     * @param storageId implementation-specific identifier for the file
+     * @return file details, such as size.
      */
     @Override
-    public StorageFileInfo getFileInfo(URI uri, String storageId) {
+    public StorageFileInfo getFileInfo(URI fsUri, String storageId) throws IOException {
         File file = generateCompletePath(Path.of(storageId)).toFile();
         return new StorageFileInfo(storageId, file.length());
     }
 
     /**
-     * Create output stream for writing to the file
-     * @param storageId file of interest
-     * @return OutputStream
-     * @throws IOException a problem occurred in creating the output stream
+     * Create output stream to allow file to be written to.
+     * @param uri Neo4J file URI
+     * @param storageId implementation-specific identifier for the file
+     * @return OutputStream for writing data to file
+     * @throws IOException file doesn't exist, isn't accessible, isn't writeable
      */
     @Override
-    public OutputStream getFileOutputStream(String storageId) throws IOException {
+    public OutputStream getFileOutputStream(URI uri, String storageId) throws IOException {
         return new CallbackOutputStream(Files.newOutputStream(generateCompletePath(Path.of(storageId))));
     }
 
     /**
-     * Create an OutputStream for requested file to allow caller to stream data to wherever
-     * @param storageId file's relative pathname in Neo4Jfs filesystem
-     * @return OutputStream to allow caller to retrieve data
+     * Create input stream to allow file to be read
+     * @param uri Neo4J file URI
+     * @param storageId implementation-specific identifier for the file
+     * @return InputStream for reading data from file
      * @throws IOException thrown when file doesn't exist or is inaccessible.
      */
     @Override
-    public InputStream getFileInputStream(String storageId) throws IOException {
+    public InputStream getFileInputStream(URI uri, String storageId) throws IOException {
         return Files.newInputStream(generateCompletePath(Path.of(storageId)));
     }
 
     /**
-     * Removes a specific file from Neo4Jfs
+     * Delete file from storage manager, most likely because file deleted from Neo4Jfs filesystem.
+     * @param fsUri base Neo4Jfs URI
      * @param storageId the storage-specific identifier, in this case a relative path.
      */
     @Override
-    public void deleteFile(String storageId) {
-        try {
-            Files.deleteIfExists(generateCompletePath(Path.of(storageId)));
-        } catch (IOException e) {
-            throw new RuntimeException("Unable to delete file from local storage.", e);
-        }
+    public void deleteFile(URI fsUri, String storageId) throws IOException {
+        Files.deleteIfExists(generateCompletePath(Path.of(storageId)));
     }
 
     /**

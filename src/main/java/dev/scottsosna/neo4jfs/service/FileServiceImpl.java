@@ -87,12 +87,12 @@ public class FileServiceImpl extends BaseNeo4jfsService implements FileService {
 
     public InputStream getInputStream(URI uri) throws IOException {
         FileEntry fe = prologueExistingFile(uri, false);
-        return storageManager.getFileInputStream(fe.getStorageId());
+        return storageManager.getFileInputStream(uri, fe.getStorageId());
     }
 
     public OutputStream getOutputStream(URI uri) throws IOException {
         FileEntry fe = prologueExistingFile(uri, true);
-        OutputStream os = storageManager.getFileOutputStream(fe.getStorageId());
+        OutputStream os = storageManager.getFileOutputStream(uri, fe.getStorageId());
 
         //  Register callback to update file size once stream is closed.
         if (os instanceof CallbackOutputStream sos) {
@@ -152,7 +152,7 @@ public class FileServiceImpl extends BaseNeo4jfsService implements FileService {
 
         //  Not ideal if physic file can't be deleted from storage manager but, as far as file system knows,
         //  the file is gone and inaccessible once the node is deleted.  Probably need a util to clean up orphans
-        storageManager.deleteFile(file.getStorageId());
+        storageManager.deleteFile(uri, file.getStorageId());
     }
 
     /**
@@ -191,21 +191,26 @@ public class FileServiceImpl extends BaseNeo4jfsService implements FileService {
      */
     private void updateSize(URI uri) {
 
-        //  Retrieve complete path based on URI.
-        List<BaseEntry> pathEntries = directoryService.find(uri);
-        if (pathEntries == null || pathEntries.isEmpty()) {
-            logger.warn("Unable to update file size for {}: path not found.", uri);
-            return;
-        }
+        try {
+            //  Retrieve complete path based on URI.
+            List<BaseEntry> pathEntries = directoryService.find(uri);
+            if (pathEntries == null || pathEntries.isEmpty()) {
+                logger.warn("Unable to update file size for {}: path not found.", uri);
+                return;
+            }
 
-        //  Path entries found, last entry expected to be file.
-        if (pathEntries.getLast() instanceof FileEntry fe) {
-            //  Retrieve file size from storage manager and update FileEntry.
-            StorageFileInfo info = storageManager.getFileInfo(uri, fe.getStorageId());
-            fe.setSize(info.getSize());
-            repository.save(uri, fe, FileEntry.class);
-        } else {
-            logger.warn("Unable to update file size for {}: path not a file.", uri);
+            //  Path entries found, last entry expected to be file.
+            if (pathEntries.getLast() instanceof FileEntry fe) {
+                //  Retrieve file size from storage manager and update FileEntry.
+                StorageFileInfo info = storageManager.getFileInfo(uri, fe.getStorageId());
+                fe.setSize(info.getSize());
+                repository.save(uri, fe, FileEntry.class);
+            } else {
+                logger.warn("Unable to update file size for {}: path not a file.", uri);
+            }
+        } catch (IOException e) {
+            //  Nuisance but not fatal, log the exception and move on.
+            logger.warn("Unable to update file size for {}: {}", uri, e.getMessage());
         }
     }
 
