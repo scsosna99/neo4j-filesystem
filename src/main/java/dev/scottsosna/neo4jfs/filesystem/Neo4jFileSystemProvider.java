@@ -2,9 +2,13 @@ package dev.scottsosna.neo4jfs.filesystem;
 
 import dev.scottsosna.neo4jfs.config.Neo4jfsConstants;
 import dev.scottsosna.neo4jfs.service.DirectoryService;
+import dev.scottsosna.neo4jfs.service.FileService;
 import dev.scottsosna.neo4jfs.service.FileSystemService;
+import org.springframework.security.core.parameters.P;
 
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.net.URI;
 import java.nio.channels.SeekableByteChannel;
 import java.nio.file.*;
@@ -15,11 +19,13 @@ import java.nio.file.spi.FileSystemProvider;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Function;
 
 public class Neo4jFileSystemProvider extends FileSystemProvider {
 
     private FileSystemService fileSystemService;
     private DirectoryService directoryService;
+    private FileService fileService;
 
     /**
      * Map of all currently open/loaded file systems.
@@ -50,6 +56,7 @@ public class Neo4jFileSystemProvider extends FileSystemProvider {
     public FileSystem newFileSystem(URI uri, Map<String, ?> env) throws IOException {
         fileSystemService = (FileSystemService) env.get(FileSystemService.class.getName());
         directoryService = (DirectoryService) env.get(DirectoryService.class.getName());
+        fileService = (FileService) env.get(FileService.class.getName());
 
         //  Truncate URI to root path and check for existence.
         URI truncatedUri = truncateUri(uri);
@@ -199,9 +206,47 @@ public class Neo4jFileSystemProvider extends FileSystemProvider {
 
     }
 
+    /**
+     * Checks for existence of file/directory at specified path.
+     * @param path the path to the file to test
+     * @param options options indicating how symbolic links are handled
+     *
+     * @return
+     */
     @Override
     public boolean exists(Path path, LinkOption... options) {
         return directoryService.exists(path.toUri());
+    }
+
+    /**
+     * Creates an InputStream for reading specified file
+     * @param path the path to the file to open
+     * @param options options specifying how the file is opened
+     * @return input stream for reading file
+     * @throws IOException exceptions for a multitude of reasons, file not found, access rights, etc.
+     */
+    @Override
+    public InputStream newInputStream(Path path, OpenOption... options) throws IOException {
+        if (path instanceof Neo4jfsPath p) {
+            return fileService.getInputStream(p.toUri());
+        } else {
+            return null;
+        }
+    }
+
+    /**
+     * Creates an OutputStream for writing specified file, creating the file if it does not exist.
+     * @param path the path to the file to open or create
+     * @param options options specifying how the file is opened
+     * @return output stream for writing file
+     * @throws IOException exceptions for a multitude of reasons, file not found, access rights, etc.
+     */
+    public OutputStream newOutputStream(Path path, OpenOption... options) throws IOException {
+        if (path instanceof Neo4jfsPath p) {
+            return fileService.getOutputStream(p.toUri());
+        } else {
+            return null;
+        }
     }
 
     /**

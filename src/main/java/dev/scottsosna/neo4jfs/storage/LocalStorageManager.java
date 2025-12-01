@@ -1,8 +1,9 @@
-package dev.scottsosna.neo4jfs.service;
+package dev.scottsosna.neo4jfs.storage;
 
 import dev.scottsosna.neo4jfs.config.Neo4jfsConstants;
 import dev.scottsosna.neo4jfs.database.model.storage.StorageFileInfo;
 import dev.scottsosna.neo4jfs.service.util.LocalStorageTreeDeleteVisitor;
+import dev.scottsosna.neo4jfs.storage.util.CallbackOutputStream;
 import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -19,7 +20,7 @@ import java.nio.file.StandardCopyOption;
 import java.util.UUID;
 
 @Service("local")
-public class LocalStorageManager implements StorageManager{
+public class LocalStorageManager implements StorageManager {
 
     //  The base directory where the Neo4Jfs files will be stored.
     @Value("${neo4jis.local.directory:#{null}}")
@@ -55,34 +56,36 @@ public class LocalStorageManager implements StorageManager{
     }
 
     /**
-     * Save the file to disk.
-     * @param uri the URI for the Neo4Jfs file
-     * @param is input stream for the file contents
-     * @return file details, including storage id (relative path) and size
+     * Creates an empty file for Neo4J file system
+     * @param uri URI for the Neo4Jfs file
+     * @return file details, including storage id (relative path)
+     * @throws IOException unable to create file
      */
     @Override
-    public StorageFileInfo storeFile(URI uri, InputStream is) throws IOException {
+    public StorageFileInfo createFile(URI uri) throws IOException {
         Path relativePath = generateRelativePath(uri);
-        try {
-            Path completePath = generateCompletePath(relativePath);
-            verifySubdirectory(completePath);
-            long bytes = Files.copy(is, completePath, StandardCopyOption.REPLACE_EXISTING);
-            System.out.println("Saved " + bytes + " bytes to " + completePath);
-            return new StorageFileInfo(relativePath.toString(), bytes);
-        } catch (IOException e) {
-            throw new RuntimeException("Unable to save file to local storage.", e);
-        }
+        Path completePath = generateCompletePath(relativePath);
+        verifySubdirectory(completePath);
+        Files.createFile(completePath);
+        return new StorageFileInfo(relativePath.toString(), 0);
     }
 
     /**
-     * Save the file to disk.
+     * Creates new file from input stream
      * @param uri URI for the Neo4Jfs file
-     * @param sourceFile source file on local disk being stored in Neo4Jfs
+     * @param is input stream for the file contents
      * @return file details, including storage id (relative path) and size
+     * @throws IOException unable to create/persist file
      */
-    public StorageFileInfo storeFile(URI uri, File sourceFile) throws IOException {
+    @Override
+    public StorageFileInfo createFile(URI uri, InputStream is) throws IOException {
+        Path relativePath = generateRelativePath(uri);
+        Path completePath = generateCompletePath(relativePath);
+        verifySubdirectory(completePath);
         try {
-            return storeFile(uri, Files.newInputStream(Path.of(sourceFile.getAbsolutePath())));
+            long bytes = Files.copy(is, completePath, StandardCopyOption.REPLACE_EXISTING);
+            System.out.println("Saved " + bytes + " bytes to " + completePath);
+            return new StorageFileInfo(relativePath.toString(), bytes);
         } catch (IOException e) {
             throw new RuntimeException("Unable to save file to local storage.", e);
         }
@@ -98,10 +101,10 @@ public class LocalStorageManager implements StorageManager{
      * @return file details, including storage id (relative path) and size
      */
     @Override
-    public StorageFileInfo replaceFile(URI uri, String storageId, InputStream is) throws IOException {
+    public StorageFileInfo updateFile(URI uri, String storageId, InputStream is) throws IOException {
 
         //  Save the new file
-        StorageFileInfo info = storeFile(uri, is);
+        StorageFileInfo info = createFile(uri, is);
 
         //  Delete original after storing updated version, ignoring exceptions which don't really affect
         //  the overall results (other than dangling files left behind).
@@ -113,24 +116,6 @@ public class LocalStorageManager implements StorageManager{
 
         //  Return the new storage id
         return info;
-    }
-
-    /**
-     * Updates an existing file in Neo4Jfs. In an attempt to not lose data, the new version of the file
-     * is saved before the existing is deleted.  This implies that the updated file has a new "storage id"
-     * returned which is stored in Neo4jFS
-     * @param uri Neo4Jfs filesystem URI
-     * @param storageId the existing storage id to be replaced.
-     * @param sourceFile source file on local disk being stored in Neo4Jfs
-     * @return file details, including storage id (relative path) and size
-     */
-    @Override
-    public StorageFileInfo replaceFile(URI uri, String storageId, File sourceFile) throws IOException {
-        try {
-            return replaceFile(uri, storageId, Files.newInputStream(Path.of(sourceFile.getAbsolutePath())));
-        } catch (IOException e) {
-            throw new RuntimeException("Unable to updating file in local storage.", e);
-        }
     }
 
     /**
@@ -146,13 +131,25 @@ public class LocalStorageManager implements StorageManager{
     }
 
     /**
+     * Create output stream for writing to the file
+     * @param storageId file of interest
+     * @return OutputStream
+     * @throws IOException a problem occurred in creating the output stream
+     */
+    @Override
+    public OutputStream getFileOutputStream(String storageId) throws IOException {
+        return new CallbackOutputStream(Files.newOutputStream(generateCompletePath(Path.of(storageId))));
+    }
+
+    /**
      * Create an OutputStream for requested file to allow caller to stream data to wherever
      * @param storageId file's relative pathname in Neo4Jfs filesystem
      * @return OutputStream to allow caller to retrieve data
      * @throws IOException thrown when file doesn't exist or is inaccessible.
      */
-    public OutputStream getFile(String storageId) throws IOException {
-        return Files.newOutputStream(generateCompletePath(Path.of(storageId)));
+    @Override
+    public InputStream getFileInputStream(String storageId) throws IOException {
+        return Files.newInputStream(generateCompletePath(Path.of(storageId)));
     }
 
     /**
