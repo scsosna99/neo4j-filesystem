@@ -76,7 +76,7 @@ public class DirectoryServiceImpl extends BaseNeo4jfsService implements Director
 
     /**
      * Delete node specified by URI, file or directory
-     * @param uri Neo4jfs URI specifying either file or directory to delete.
+     * @param uri Neo4Jfs URI specifying either file or directory to delete.
      * @throws IOException thrown for unresolved pathname or an error doing delete.
      */
     public void delete(URI uri) throws IOException {
@@ -186,7 +186,7 @@ public class DirectoryServiceImpl extends BaseNeo4jfsService implements Director
     }
     /**
      * Deletes (removes) an empty directory specified by URI, similar to *nix {@code rmdir} command
-     * @param uri Neo4jfs URI specifying directory to delete
+     * @param uri Neo4Jfs URI specifying directory to delete
      * @throws IOException an error occurred, such as directory not empty.
      */
     public void rmdir(URI uri) throws IOException {
@@ -200,7 +200,7 @@ public class DirectoryServiceImpl extends BaseNeo4jfsService implements Director
 
     /**
      * Walks directory from node specified by URI and deletes everything bottom-up, similar to *nix {@code rm -rf} command
-     * @param uri Neo4jfs URI for the directory or file to delete.
+     * @param uri Neo4Jfs URI for the directory or file to delete.
      * @throws IOException
      */
     public void rmdirRecursively(URI uri) throws IOException {
@@ -264,7 +264,7 @@ public class DirectoryServiceImpl extends BaseNeo4jfsService implements Director
 
     /**
      * Moves file from one directory to another.
-     * @param fsUri Neo4jfs URI for the specific partion.
+     * @param fsUri Neo4Jfs URI for the specific partion.
      * @param from source file being moved
      * @param fromParent parent directory of source file
      * @param to when not null, target file being replaced as part of move
@@ -317,7 +317,7 @@ public class DirectoryServiceImpl extends BaseNeo4jfsService implements Director
 
     /**
      * Initial steps for a number of operations where the tree is required before proceeding
-     * @param uri Neo4jfs URI for the directory path on which to operate
+     * @param uri Neo4Jfs URI for the directory path on which to operate
      * @return the nodes representing the path.
      * @throws IOException if the path doesn't exist.
      */

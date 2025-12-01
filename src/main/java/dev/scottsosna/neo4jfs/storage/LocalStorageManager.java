@@ -43,7 +43,7 @@ public class LocalStorageManager implements StorageManager {
     }
 
     /**
-     * Neo4jFS being deleted, therefore delete all files in its partition
+     * Neo4Jfs being deleted, therefore delete all files in its partition
      * @param uri URI of Neo4Jfs filesystem
      */
     public void dropPartition(URI uri) throws IOException {
@@ -120,7 +120,7 @@ public class LocalStorageManager implements StorageManager {
 
     /**
      * Returns file details for a specific storage id.
-     * @param uri Neo4jFS filesystem URI
+     * @param uri Neo4Jfs filesystem URI
      * @param storageId specifies file of interest
      * @return the file info
      */
@@ -167,7 +167,7 @@ public class LocalStorageManager implements StorageManager {
 
     /**
      * For local disk storage, partition equates with the Neo4J database, using URI's host as partition name.
-     * @param uri Neo4jfs filesystem URI
+     * @param uri Neo4Jfs filesystem URI
      * @return partition name
      */
     private String determinePartition(URI uri) {

@@ -37,7 +37,7 @@ public class Neo4jFileSystemProvider extends FileSystemProvider {
     }
 
     /**
-     * @Return Scheme for Neo4jfs file system, must be unique among all file system providers.
+     * @Return Scheme for Neo4Jfs file system, must be unique among all file system providers.
      */
     @Override
     public String getScheme() {
@@ -45,7 +45,7 @@ public class Neo4jFileSystemProvider extends FileSystemProvider {
     }
 
     /**
-     * Creates a new Neo4jfs file system.
+     * Creates a new Neo4Jfs file system.
      * @param uri URI reference
      * @param env A map of provider specific properties to configure the file system; may be empty
      *
@@ -75,7 +75,7 @@ public class Neo4jFileSystemProvider extends FileSystemProvider {
 
     /**
      * Retrieves opened file system or throws exception if not found in map.
-     * @param uri URI specifying Neo4jfs partition (host) and path.
+     * @param uri URI specifying Neo4Jfs partition (host) and path.
      * @return Neo4Jfs file system.
      */
     @Override
@@ -91,7 +91,7 @@ public class Neo4jFileSystemProvider extends FileSystemProvider {
     /**
      * Create Neo4Jfs path from URI.
      *
-     * @param uri URI specifying Neo4jfs partition (host) and path.
+     * @param uri URI specifying Neo4Jfs partition (host) and path.
      * @return Neo4Jfs path.
      */
     @Override

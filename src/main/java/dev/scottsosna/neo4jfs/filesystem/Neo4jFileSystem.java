@@ -22,7 +22,7 @@ public class Neo4jFileSystem extends FileSystem {
     private final Map<String,?> env;
 
     /**
-     * Root Neo4jfs path for root for this file system.
+     * Root Neo4Jfs path for root for this file system.
      */
     private final Path rootPath;
 

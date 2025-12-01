@@ -19,7 +19,7 @@ public class Neo4jfsPath implements Path {
 
     /**
      * Constructor
-     * @param fs Neo4jfs file system for this path.
+     * @param fs Neo4Jfs file system for this path.
      * @param path The detailed path within the file system.
      */
     public Neo4jfsPath(FileSystem fs, String path) {
