@@ -69,7 +69,7 @@ public class LocalStorageManager implements StorageManager {
     @Override
     public StorageFileInfo createFile(URI uri) throws IOException {
         Path relativePath = generateRelativePath(uri);
-        Path completePath = generateCompletePath(relativePath);
+        Path completePath = generateCompletePath(uri, relativePath);
         verifySubdirectory(completePath);
         Files.createFile(completePath);
         return new StorageFileInfo(relativePath.toString(), 0);
@@ -86,7 +86,7 @@ public class LocalStorageManager implements StorageManager {
     public StorageFileInfo createFile(URI uri, InputStream is) throws IOException {
         //  Create path, verify/create subdirectory.
         Path relativePath = generateRelativePath(uri);
-        Path completePath = generateCompletePath(relativePath);
+        Path completePath = generateCompletePath(uri, relativePath);
         verifySubdirectory(completePath);
 
         //  Copy data from input stream to file.
@@ -130,8 +130,8 @@ public class LocalStorageManager implements StorageManager {
     public StorageFileInfo copyFile(URI fsUri, String storageId) throws IOException{
 
         //  Create path for source (existing) and target (new) files.
-        Path source = generateCompletePath(Path.of(storageId));
-        Path destination = generateCompletePath(generateRelativePath(fsUri));
+        Path source = generateCompletePath(fsUri, Path.of(storageId));
+        Path destination = generateCompletePath(fsUri, generateRelativePath(fsUri));
         verifySubdirectory(destination);
 
         //  Attempt to copy file
@@ -148,7 +148,7 @@ public class LocalStorageManager implements StorageManager {
      */
     @Override
     public StorageFileInfo getFileInfo(URI fsUri, String storageId) throws IOException {
-        File file = generateCompletePath(Path.of(storageId)).toFile();
+        File file = generateCompletePath(fsUri, Path.of(storageId)).toFile();
         return new StorageFileInfo(storageId, file.length());
     }
 
@@ -161,7 +161,7 @@ public class LocalStorageManager implements StorageManager {
      */
     @Override
     public OutputStream getFileOutputStream(URI uri, String storageId) throws IOException {
-        return new CallbackOutputStream(Files.newOutputStream(generateCompletePath(Path.of(storageId))));
+        return new CallbackOutputStream(Files.newOutputStream(generateCompletePath(uri, Path.of(storageId))));
     }
 
     /**
@@ -173,7 +173,7 @@ public class LocalStorageManager implements StorageManager {
      */
     @Override
     public InputStream getFileInputStream(URI uri, String storageId) throws IOException {
-        return Files.newInputStream(generateCompletePath(Path.of(storageId)));
+        return Files.newInputStream(generateCompletePath(uri, Path.of(storageId)));
     }
 
     /**
@@ -183,7 +183,7 @@ public class LocalStorageManager implements StorageManager {
      */
     @Override
     public void deleteFile(URI fsUri, String storageId) throws IOException {
-        Files.deleteIfExists(generateCompletePath(Path.of(storageId)));
+        Files.deleteIfExists(generateCompletePath(fsUri, Path.of(storageId)));
     }
 
     /**
@@ -198,11 +198,12 @@ public class LocalStorageManager implements StorageManager {
     /**
      * The relative path is partition-specific, prepend the base pathname of the local storage manager which
      * represents the complete path of the soon-to-be-stored file.
+     * @param fsUri base Neo4Jfs URI
      * @param relativePath partion and local file to be stored.
      * @return absolute path of the file to store
      */
-    private Path generateCompletePath(Path relativePath) {
-        return Path.of(neo4jfsBasePath, relativePath.toString());
+    private Path generateCompletePath(URI fsUri, Path relativePath) {
+        return Path.of(neo4jfsBasePath, determinePartition(fsUri), relativePath.toString());
     }
 
     /**
@@ -214,7 +215,7 @@ public class LocalStorageManager implements StorageManager {
      */
     private Path generateRelativePath(URI uri) {
         String uuid = UUID.randomUUID().toString();
-        return Path.of(determinePartition(uri), uuid.substring(0, 2), uuid);
+        return Path.of(uuid.substring(0, 2), uuid);
     }
 
     /**
