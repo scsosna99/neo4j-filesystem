@@ -5,10 +5,12 @@ import dev.scottsosna.neo4jfs.database.model.neo4j.DatabaseAccessType;
 import dev.scottsosna.neo4jfs.database.model.neo4j.DatabaseStatusType;
 import dev.scottsosna.neo4jfs.database.model.neo4j.DatabaseType;
 import dev.scottsosna.neo4jfs.database.repository.DatabaseRepository;
+import dev.scottsosna.neo4jfs.exception.Neo4jfsDatabaseException;
+import dev.scottsosna.neo4jfs.storage.StorageManager;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
-import java.io.File;
+import java.io.IOException;
 import java.net.URI;
 import java.nio.file.*;
 import java.util.Map;
@@ -39,7 +41,7 @@ public class FileSystemServiceImpl extends BaseNeo4jfsService implements FileSys
      * storage partition is available/usable.
      * @param uri base URI for the file system.
      */
-    public void init(URI uri) {
+    public void init(URI uri) throws IOException {
         checkUri(uri);
 
         //  Does a database exist for the partition?
@@ -54,12 +56,8 @@ public class FileSystemServiceImpl extends BaseNeo4jfsService implements FileSys
             directoryService.createRoot(uri);
         }
 
-        try {
-            //  Also make sure storage manager is available/initialized.
-            storageManager.initPartition(uri);
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
+        //  Also make sure storage manager is available/initialized.
+        storageManager.initPartition(uri);
     }
 
     /**
@@ -80,34 +78,42 @@ public class FileSystemServiceImpl extends BaseNeo4jfsService implements FileSys
     }
 
     /**
-     * The URI has specified an existing database, ensure that the database meets the criteria for a Neo4J file system.
+     * The Neo4fJfs URI partition defined for an existing database which must meet requirements before use.
      * @param db Database to verify.
      */
-    private void verifyDatabaseUsability(Database db) {
-        if (db.getDefaultDatabase()) throw new RuntimeException("Default databases are not allowed.");
-        if (db.getType() == DatabaseType.SYSTEM) throw new RuntimeException("System databases are not allowed.");
-        if (db.getAccess() != DatabaseAccessType.READ_WRITE) throw new RuntimeException("Database must be read-write.");
-        if (db.getCurrentStatus() != DatabaseStatusType.ONLINE) throw new RuntimeException("Database must be online.");
+    private void verifyDatabaseUsability(Database db) throws IOException {
+        if (db.getDefaultDatabase()) throw new Neo4jfsDatabaseException("%s: Partition database must not be default.".formatted(db.getName()));
+        if (db.getType() == DatabaseType.SYSTEM) throw new Neo4jfsDatabaseException("%s: Partition database must not be system.".formatted(db.getName()));
+        if (db.getAccess() != DatabaseAccessType.READ_WRITE) throw new Neo4jfsDatabaseException("%s: Partition database must be read-write.".formatted(db.getName()));
+        if (db.getCurrentStatus() != DatabaseStatusType.ONLINE) throw new Neo4jfsDatabaseException("%s: Partition database must be online.".formatted(db.getName()));
     }
 
     @Scheduled(initialDelay = 2000L)
     public void test() {
         try {
             try (FileSystem fs = FileSystems.newFileSystem(URI.create("neo4jfs://scsosna99/"),
-                Map.of(FileSystemService.class.getName(), this, DirectoryService.class.getName(), directoryService))) {
+                Map.of(
+                    FileSystemService.class.getName(), this,
+                    DirectoryService.class.getName(), directoryService,
+                    FileService.class.getName(), fileService))) {
                 Files.createDirectory(fs.getPath("/scs1"));
                 Files.createDirectory(fs.getPath("/scs1/scs2"));
 
-                fileService.create(new URI("neo4jfs://scsosna99/myRootFile"), new File("/Users/scsosna/data/music/manu/viva_la_colifata/1_02_Sabias_Palabras.mp3"));
+                fileService.create(new URI("neo4jfs://scsosna99/myRootFile"), Path.of("/Users/scsosna/data/music/manu/viva_la_colifata/1_02_Sabias_Palabras.mp3"));
                 directoryService.mkdir(new URI("neo4jfs://scsosna99/abc"));
-                fileService.create(new URI("neo4jfs://scsosna99/abc/myFirstFile"), new File("/Users/scsosna/data/music/manu/viva_la_colifata/1_02_Sabias_Palabras.mp3"));
+                fileService.create(new URI("neo4jfs://scsosna99/abc/myFirstFile"), Path.of("/Users/scsosna/data/music/manu/viva_la_colifata/1_02_Sabias_Palabras.mp3"));
                 directoryService.mkdir(new URI("neo4jfs://scsosna99/def"));
                 directoryService.mkdir(new URI("neo4jfs://scsosna99/def/hij"));
                 directoryService.mkdir(new URI("neo4jfs://scsosna99/def/klm"));
-                fileService.create(new URI("neo4jfs://scsosna99/def/mySecondFile"), new File("/Users/scsosna/data/music/manu/viva_la_colifata/1_02_Sabias_Palabras.mp3"));
-                fileService.create(new URI("neo4jfs://scsosna99/def/myThirdFile"), new File("/Users/scsosna/data/music/manu/viva_la_colifata/1_02_Sabias_Palabras.mp3"));
+                fileService.create(new URI("neo4jfs://scsosna99/def/mySecondFile"), Path.of("/Users/scsosna/data/music/manu/viva_la_colifata/1_02_Sabias_Palabras.mp3"));
+                fileService.create(new URI("neo4jfs://scsosna99/def/myThirdFile"), Path.of("/Users/scsosna/data/music/manu/viva_la_colifata/1_02_Sabias_Palabras.mp3"));
+                fileService.create(new URI("neo4jfs://scsosna99/def/myFourthFile"), Path.of("/Users/scsosna/data/music/manu/viva_la_colifata/1_02_Sabias_Palabras.mp3"));
+                fileService.delete(new URI("neo4jfs://scsosna99/def/myFourthFile"));
                 System.out.println("completed");
-
+                directoryService.dumpTree(new URI("neo4jfs://scsosna99/"));
+                String copiedStorageId = "";
+                storageManager.copyFile(new URI("neo4jfs://scsosna99/"), copiedStorageId);
+                Files.copy(Path.of("/Users/scsosna/data/music/manu/siberie_metait_conte/14_Siberie_Fleuve_Amour.mp3"), fs.getPath("/abc/random.mp3"));
 //                Files.copy(Path.of("/Users/scsosna/data/music/manu/viva_la_colifata/1_02_Sabias_Palabras.mp3"), fs.getPath("/abc/random.mp3"));
 
 //                Files.createDirectories(fs.getPath("/scs1/scs2/scs3"));

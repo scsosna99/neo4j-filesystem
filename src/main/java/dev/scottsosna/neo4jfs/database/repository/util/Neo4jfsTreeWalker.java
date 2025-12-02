@@ -5,12 +5,15 @@ import dev.scottsosna.neo4jfs.database.node.BaseEntry;
 import dev.scottsosna.neo4jfs.database.node.DirectoryEntry;
 import dev.scottsosna.neo4jfs.database.node.FileEntry;
 import dev.scottsosna.neo4jfs.database.repository.DirectoryEntryRepository;
+import dev.scottsosna.neo4jfs.exception.Neo4jfsException;
+import dev.scottsosna.neo4jfs.exception.Neo4jfsUnknownEntryException;
 import dev.scottsosna.neo4jfs.service.DirectoryService;
 import lombok.Getter;
 
 import java.io.Closeable;
 import java.io.IOException;
 import java.net.URI;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.util.ArrayDeque;
 import java.util.Collections;
@@ -112,7 +115,7 @@ public class Neo4jfsTreeWalker implements Closeable {
      * @param uri starting point in tree
      * @return event for first starting node encountered
      */
-    public NeofjfsWalkerEvent walk(URI uri) {
+    public NeofjfsWalkerEvent walk(URI uri) throws IOException {
         //  Walker has been closed, no more work to do, even when tree was not completely navigated.
         if (closed) {
             throw new IllegalStateException("Tree walker is closed.");
@@ -147,7 +150,7 @@ public class Neo4jfsTreeWalker implements Closeable {
             return new NeofjfsWalkerEvent(EventType.FILE, null, f, uri, null);
         } else {
             //  Hmmmm, what are we getting?
-            throw new RuntimeException("Unknown entry type " + startingNode.getClass().getName());
+            throw new Neo4jfsUnknownEntryException(uri, startingNode.getClass().getName());
         }
     }
 
@@ -156,7 +159,7 @@ public class Neo4jfsTreeWalker implements Closeable {
      * @param env event returned by initial walk() or most recent event returned by next().
      * @return next event in tree walk.
      */
-    public NeofjfsWalkerEvent next(NeofjfsWalkerEvent env) {
+    public NeofjfsWalkerEvent next(NeofjfsWalkerEvent env) throws IOException {
         //  Walker has been closed, no more work to do, even when tree was not completely navigated.
         if (closed) {
             throw new IllegalStateException("Tree walker is closed.");
@@ -175,24 +178,23 @@ public class Neo4jfsTreeWalker implements Closeable {
      * @param uri URI of an entry in the tree
      * @return the node.
      */
-    private BaseEntry getStartingEntry(URI uri) {
+    private BaseEntry getStartingEntry(URI uri) throws IOException {
 
         //  Query returns nodes for all parts of the pathname defined in the URI with an empty list returned
         //  when any ancestor does not exist.
         List<BaseEntry> nodes = repository.find(uri);
         if (nodes.isEmpty()) {
-            throw new RuntimeException("%s: no such file or directory".formatted(uri));
+            throw new NoSuchFileException(uri.toString());
         }
 
-        //  Query structure _should_ guarantee last node is our starting point.  Cheap check to
+        //  Query structure _should_ guarantee last node is our starting point.  Quick check to
         //  ensure names match but otherwise we'll go with it.  Need special case check when starting
         //  from root as no file name is present.
-        int nodeCount = nodes.size();
         BaseEntry lastNode = nodes.getLast();
         Path fileName = Path.of(uri).getFileName();
         if ((fileName != null && !fileName.toString().equals(lastNode.getName())) ||
             (fileName == null && lastNode instanceof DirectoryEntry d && !d.getName().equals(Neo4jfsConstants.NAME_ROOT_DIRECTORY))) {
-            throw new RuntimeException("Node name/file name mismatch:");
+            throw new Neo4jfsException("Node name/file name mismatch:");
         }
 
         //  Should be the starting point for the tree walk.
@@ -204,7 +206,7 @@ public class Neo4jfsTreeWalker implements Closeable {
      * @param event previous event provided by caller
      * @return next event in tree walk.
      */
-    private NeofjfsWalkerEvent visit(final NeofjfsWalkerEvent event) {
+    private NeofjfsWalkerEvent visit(final NeofjfsWalkerEvent event) throws IOException {
         //  Empty stack means we're done.
         Neo4jfsWalkerData current = stack.peek();
         if (current == null) {
@@ -231,7 +233,7 @@ public class Neo4jfsTreeWalker implements Closeable {
      * @param event most recent event returned by next()
      * @return EXIT_DIRECTORY event
      */
-    private NeofjfsWalkerEvent visitExitDirectory(final NeofjfsWalkerEvent event) {
+    private NeofjfsWalkerEvent visitExitDirectory(final NeofjfsWalkerEvent event) throws IOException {
         //  No files or subdirs left to process, so either we've completed the current tree OR we're done because there's
         //  nothing left on the stack.
         if (stack.isEmpty()) {
@@ -262,7 +264,7 @@ public class Neo4jfsTreeWalker implements Closeable {
                         uri = popped.uri;
                         break;
                     default:
-                        throw new RuntimeException("Unexpected event type");
+                        throw new Neo4jfsUnknownEntryException(event.eventType.name());
                 }
             } else {
                 //  Empty stack indicates we've walked all the way down and ascended back to where we started, means
@@ -277,7 +279,7 @@ public class Neo4jfsTreeWalker implements Closeable {
                         uri = event.uri;
                         break;
                     default:
-                        throw new RuntimeException("Unexpected event type");
+                        throw new Neo4jfsUnknownEntryException(event.eventType.name());
                 }
             }
 
@@ -334,7 +336,7 @@ public class Neo4jfsTreeWalker implements Closeable {
      * @param current current directory being walked
      * @return START_DIRECTORY event or null if no more subdirectories to process.
      */
-    private NeofjfsWalkerEvent visitSubdirectories(final Neo4jfsWalkerData current) {
+    private NeofjfsWalkerEvent visitSubdirectories(final Neo4jfsWalkerData current) throws IOException {
 
         //  Assuming requested max depth has not been reached, visit next subdirectory.
         if (current.subdirs.hasNext() && stack.size() <= maxDepth) {
@@ -360,7 +362,7 @@ public class Neo4jfsTreeWalker implements Closeable {
                 return new NeofjfsWalkerEvent(EventType.ENTER_DIRECTORY, subdirAndChildren, null, eventUri, null);
             } else {
                 //  Indicates a corrupted tree/graph, most likely duplicately named directories or files exist.  Bad.
-                throw new RuntimeException("Unexpected entry type");
+                throw new Neo4jfsUnknownEntryException(uri, subdirEntry.getClass().getName());
             }
         }
 

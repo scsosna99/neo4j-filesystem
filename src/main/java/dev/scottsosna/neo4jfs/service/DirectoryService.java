@@ -16,12 +16,12 @@ public interface DirectoryService {
     boolean exists(URI uri);
     DirectoryEntry createRoot (URI uri);
     DirectoryEntry findOrCreateRoot(URI uri);
-    DirectoryEntry mkdir (URI uri);
+    DirectoryEntry mkdir (URI uri) throws IOException;
     void delete(URI uri) throws IOException;
     void move(URI fromUri, URI toParentUri, CopyOption... options) throws IOException;
     void rmdir(URI uri) throws IOException;
     void rmdirRecursively(URI uri) throws IOException;
-    void dumpTree(URI uri);
+    void dumpTree(URI uri) throws IOException;
     BaseEntry parent(URI uri);
     List<BaseEntry> find(URI uri);
     DirectoryEntry findChildren(URI uri, String parentId, int skip, int limit);

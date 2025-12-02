@@ -15,10 +15,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.URI;
-import java.nio.file.FileVisitor;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
+import java.nio.file.*;
 import java.util.UUID;
 
 /**
@@ -50,7 +47,7 @@ public class LocalStorageManager implements StorageManager {
             partition.mkdirs();
         } else if (!partition.isDirectory()) {
             //  A "file" is not a directory and can't be used for storage.
-            throw new RuntimeException("Partition exists but is not a directory: " + partition);
+            throw new NotDirectoryException(partition.toString());
         }
     }
 
@@ -226,12 +223,12 @@ public class LocalStorageManager implements StorageManager {
      * files are stored.
      * @param completePath destination pathname of the saved/updated file
      */
-    private void verifySubdirectory(Path completePath) {
+    private void verifySubdirectory(Path completePath) throws IOException {
         File subdir = completePath.getParent().toFile();
         if (!subdir.exists()) {
             subdir.mkdir();
         } else if (!subdir.isDirectory()) {
-            throw new RuntimeException("Subdirectory exists but is not a directory: " + subdir);
+            throw new NotDirectoryException(subdir.getPath());
         }
     }
 
@@ -239,7 +236,7 @@ public class LocalStorageManager implements StorageManager {
      * During startup, ensure the directory where files are stored exists.
      */
     @PostConstruct
-    private void init() {
+    private void init() throws IOException{
         //  Use current working directory as default when base path is not configured.
         if (neo4jfsBasePath == null) {
             neo4jfsBasePath = Path.of(System.getProperty("user.dir"), Neo4jfsConstants.NEO4JFS_URI_SCHEME).toString();
@@ -250,7 +247,7 @@ public class LocalStorageManager implements StorageManager {
         if (!base.exists()) {
             base.mkdirs();
         } else if (!base.isDirectory()) {
-            throw new RuntimeException("Base path exists but is not a directory: " + neo4jfsBasePath);
+            throw new NotDirectoryException(neo4jfsBasePath);
         }
     }
 }

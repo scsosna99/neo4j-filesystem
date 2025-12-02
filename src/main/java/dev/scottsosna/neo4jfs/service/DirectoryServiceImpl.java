@@ -8,6 +8,7 @@ import dev.scottsosna.neo4jfs.database.repository.util.DebuggingFileVisitor;
 import dev.scottsosna.neo4jfs.database.repository.util.DirectoryDeleteFileVisitor;
 import dev.scottsosna.neo4jfs.database.repository.util.Neo4jfsFileAttributes;
 import dev.scottsosna.neo4jfs.database.repository.util.Neo4jfsTreeWalker;
+import dev.scottsosna.neo4jfs.exception.Neo4jfsUnknownEntryException;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
@@ -44,7 +45,7 @@ public class DirectoryServiceImpl extends BaseNeo4jfsService implements Director
         return d;
     }
 
-    public DirectoryEntry mkdir (URI uri) {
+    public DirectoryEntry mkdir (URI uri) throws IOException {
         checkUri(uri);
 
         //  The parents of the new directory must exist, so query them from the database.
@@ -52,7 +53,7 @@ public class DirectoryServiceImpl extends BaseNeo4jfsService implements Director
         Path parent = path.getParent();
         List<BaseEntry> entries = repository.find(uri, parent);
         if (entries.isEmpty()) {
-            throw new RuntimeException("%s: no such file or directory".formatted(parent));
+            throw new NoSuchFileException(parent.toString());
         }
 
         //  Ensure that immediate parent entry of the new directory is a directory.
@@ -60,7 +61,7 @@ public class DirectoryServiceImpl extends BaseNeo4jfsService implements Director
             //  Make sure the name requested doesn't already exist
             BaseEntry child = repository.findNamedChild(uri, dir.getId(), path.getFileName().toString());
             if (child != null) {
-                throw new RuntimeException("%s: File already exists".formatted(path));
+                throw new FileAlreadyExistsException(path.toString());
             }
 
             //  All good, create the new directory.
@@ -70,7 +71,7 @@ public class DirectoryServiceImpl extends BaseNeo4jfsService implements Director
             return newbie;
         } else {
             //  Not a directory, fail.
-            throw new RuntimeException("%s: Not a directory".formatted(parent));
+            throw new NotDirectoryException(parent.toString());
         }
     }
 
@@ -94,7 +95,7 @@ public class DirectoryServiceImpl extends BaseNeo4jfsService implements Director
                 rmdirWork(uri, lastPart);
                 break;
             default:
-                throw new RuntimeException("%s: Unknown node type".formatted(uri));
+                throw new Neo4jfsUnknownEntryException(uri, lastPart.getClass().getName());
         }
     }
 
@@ -162,7 +163,7 @@ public class DirectoryServiceImpl extends BaseNeo4jfsService implements Director
                         moveFileWork(fromUri, fe1, fromParent, null, de2, toUri, options);
                         break;
                     default:
-                        throw new RuntimeException("%s: Unknown node type".formatted(toUri));
+                        throw new Neo4jfsUnknownEntryException(toUri, toEntry.getClass().getName());
                 }
                 break;
             //  Source is directory.
@@ -177,11 +178,11 @@ public class DirectoryServiceImpl extends BaseNeo4jfsService implements Director
                         moveFileWork(fromUri, de, fromParent, null, de2, toUri, options);
                         break;
                     default:
-                        throw new RuntimeException("%s: Unknown node type".formatted(toUri));
+                        throw new Neo4jfsUnknownEntryException(toUri, toEntry.getClass().getName());
                 }
                 break;
             default:
-                throw new RuntimeException("%s: Unknown node type".formatted(fromUri));
+                throw new Neo4jfsUnknownEntryException(fromUri, fromEntry.getClass().getName());
         }
     }
     /**
@@ -221,11 +222,11 @@ public class DirectoryServiceImpl extends BaseNeo4jfsService implements Director
                 walkFileTree(uri, DirectoryDeleteFileVisitor.VISITOR_KEY);
                 break;
             default:
-                throw new RuntimeException("%s: Unknown node type".formatted(uri));
+                throw new Neo4jfsUnknownEntryException(uri, lastPart.getClass().getName());
         }
     }
 
-    public void dumpTree(URI uri) {
+    public void dumpTree(URI uri) throws IOException {
         checkUri(uri);
         walkFileTree(uri, new DebuggingFileVisitor());
     }
@@ -294,7 +295,7 @@ public class DirectoryServiceImpl extends BaseNeo4jfsService implements Director
                 toParent.setSubdirs(List.of(de));
                 break;
             default:
-                throw new RuntimeException("%s: Unknown node type".formatted(from.getClass().getName()));
+                throw new Neo4jfsUnknownEntryException(fsUri, from.getClass().getName());
         }
         repository.save(fsUri, toParent);
 
@@ -370,7 +371,7 @@ public class DirectoryServiceImpl extends BaseNeo4jfsService implements Director
 
             //  Root directory cannot be deleted.
             if (d.isRoot()) {
-                throw new RuntimeException("%s: Root directory cannot be deleted".formatted(uri));
+                throw new AccessDeniedException("%s: Root directory cannot be deleted".formatted(uri));
             }
 
             //  Only empty directories are deleted/removed.
@@ -380,10 +381,10 @@ public class DirectoryServiceImpl extends BaseNeo4jfsService implements Director
                     (entry.getSubdirs() == null || entry.getSubdirs().isEmpty()))) {
                 repository.delete(uri, lastPart.getId());
             } else {
-                throw new RuntimeException("%s: Directory not empty".formatted(uri));
+                throw new DirectoryNotEmptyException(uri.toString());
             }
         } else {
-            throw new RuntimeException("%s: Not a directory".formatted(uri));
+            throw new NotDirectoryException(uri.toString());
         }
     }
 
@@ -393,7 +394,7 @@ public class DirectoryServiceImpl extends BaseNeo4jfsService implements Director
      * @param uri starting point in tree
      * @param visitor visitor to apply to each node
      */
-    private void walkFileTree(URI uri, FileVisitor<Neo4jfsTreeWalker.NeofjfsWalkerEvent> visitor) {
+    private void walkFileTree(URI uri, FileVisitor<Neo4jfsTreeWalker.NeofjfsWalkerEvent> visitor) throws IOException {
         checkUri(uri);
 
         var attribs = new Neo4jfsFileAttributes();
@@ -416,8 +417,6 @@ public class DirectoryServiceImpl extends BaseNeo4jfsService implements Director
                 }
                 env = walker.next(env);
             } while (env.getEventType() != Neo4jfsTreeWalker.EventType.FINISHED);
-        } catch (IOException ioe) {
-            throw new RuntimeException(ioe);
         }
     }
 
@@ -427,7 +426,7 @@ public class DirectoryServiceImpl extends BaseNeo4jfsService implements Director
      * @param uri starting point in tree
      * @param fileVisitorKey key for finding registered visitor
      */
-    private void walkFileTree(URI uri, String fileVisitorKey) {
+    private void walkFileTree(URI uri, String fileVisitorKey) throws IOException {
         checkUri(uri);
         walkFileTree(uri, visitorMap.get(fileVisitorKey));
     }

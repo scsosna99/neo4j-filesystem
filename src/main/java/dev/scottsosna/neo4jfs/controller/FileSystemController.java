@@ -4,6 +4,7 @@ import dev.scottsosna.neo4jfs.service.FileSystemService;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
+import java.io.IOException;
 import java.net.URI;
 
 @RestController
@@ -18,7 +19,7 @@ public class FileSystemController {
 
     @PostMapping("initialize")
     @ResponseStatus(HttpStatus.CREATED)
-    public void initialize(@RequestBody URI uri) {
+    public void initialize(@RequestBody URI uri) throws IOException {
         service.init(uri);
     }
 

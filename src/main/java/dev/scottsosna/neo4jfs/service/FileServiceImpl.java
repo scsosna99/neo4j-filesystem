@@ -16,6 +16,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.URI;
+import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
@@ -122,7 +123,7 @@ public class FileServiceImpl extends BaseNeo4jfsService implements FileService {
         //  Is there already a file or subdir with the same name?
         BaseEntry child = repository.findNamedChild(uri, parent.getId(), Path.of(uri).getFileName().toString());
         if (child != null) {
-            throw new RuntimeException("%s: File already exists".formatted(uri));
+            throw new FileAlreadyExistsException(uri.toString());
         }
 
         //  When InputStream provided, we have data to persist; without create an empty file
@@ -147,10 +148,10 @@ public class FileServiceImpl extends BaseNeo4jfsService implements FileService {
 
         //  Delete the node first and then the file.
         if (!repository.delete(uri, file.getId())) {
-            throw new RuntimeException("Unable to delete file entry.");
+            throw new IOException("Unable to delete file entry %s.".formatted(file.getName()));
         }
 
-        //  Not ideal if physic file can't be deleted from storage manager but, as far as file system knows,
+        //  Not ideal if physical file can't be deleted from storage manager but, as far as file system knows,
         //  the file is gone and inaccessible once the node is deleted.  Probably need a util to clean up orphans
         storageManager.deleteFile(uri, file.getStorageId());
     }
@@ -181,7 +182,7 @@ public class FileServiceImpl extends BaseNeo4jfsService implements FileService {
         if (entry instanceof FileEntry f) {
             return f;
         } else {
-            throw new RuntimeException("%s: Not a file".formatted(uri));
+            throw new NoSuchFileException(uri.toString());
         }
     }
 
