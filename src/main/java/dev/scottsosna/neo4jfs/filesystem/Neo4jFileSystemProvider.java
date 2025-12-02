@@ -4,6 +4,8 @@ import dev.scottsosna.neo4jfs.config.Neo4jfsConstants;
 import dev.scottsosna.neo4jfs.service.DirectoryService;
 import dev.scottsosna.neo4jfs.service.FileService;
 import dev.scottsosna.neo4jfs.service.FileSystemService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.core.parameters.P;
 
 import java.io.IOException;
@@ -32,12 +34,14 @@ public class Neo4jFileSystemProvider extends FileSystemProvider {
      */
     private final Map<URI, Neo4jFileSystem> fileSystems = new ConcurrentHashMap<>();
 
+    private final static Logger logger = LoggerFactory.getLogger(Neo4jFileSystemProvider.class);
+
     public Neo4jFileSystemProvider() {
-        System.out.println("Neo4jFileSystemProvider constructor");
+        logger.info("Neo4jFileSystemProvider instance created.");
     }
 
     /**
-     * @Return Scheme for Neo4Jfs file system, must be unique among all file system providers.
+     * @return Scheme for Neo4Jfs file system, must be unique among all file system providers.
      */
     @Override
     public String getScheme() {
@@ -254,10 +258,11 @@ public class Neo4jFileSystemProvider extends FileSystemProvider {
      * @param uri base URI of file system
      */
     void removeFileSystem(URI uri) {
+        logger.info("Removing file system from registry: " + uri.toString());
         try {
             fileSystems.remove(uri);
         } catch (Exception e) {
-            System.out.println("Error removing file system: " + uri);
+            //  make best effort and move on
         }
     }
 
