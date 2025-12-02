@@ -130,27 +130,28 @@ public class Neo4jfsTreeWalker implements Closeable {
         //  create appropriate event based on its type (today either directory or file).
         //  TODO: Change to switch-on-class when feature leaves preview.
         BaseEntry startingNode = getStartingEntry(uri);
-        if (startingNode instanceof DirectoryEntry d) {
-            //  The node returned by getStartingEntry() does not return directories files or subdirectories, so
-            //  retrieve them separately.  The results are paginated to prevent problems with large file systems.
-            DirectoryEntry withChildren = repository.getParentWithChildren(uri, d.getId(), 0, LIMIT_CHILDREN_PER_CALL);
-            if (withChildren == null) {
-                //  Current directory has no subdirs or files so substitute the starting node so walk can continue.
-                withChildren = d;
-            }
+        switch (startingNode) {
+            case DirectoryEntry d:
+                //  The node returned by getStartingEntry() does not return directories files or subdirectories, so
+                //  retrieve them separately.  The results are paginated to prevent problems with large file systems.
+                DirectoryEntry withChildren = repository.getParentWithChildren(uri, d.getId(), 0, LIMIT_CHILDREN_PER_CALL);
+                if (withChildren == null) {
+                    //  Current directory has no subdirs or files so substitute the starting node so walk can continue.
+                    withChildren = d;
+                }
 
-            //  Push data for current directory onto stack to track where we are/what we're doing.
-            stack.push(new Neo4jfsWalkerData(uri, withChildren, LIMIT_CHILDREN_PER_CALL));
+                //  Push data for current directory onto stack to track where we are/what we're doing.
+                stack.push(new Neo4jfsWalkerData(uri, withChildren, LIMIT_CHILDREN_PER_CALL));
 
-            //  Initial event when walk starts with directory is START_DIRECTORY.
-            return new NeofjfsWalkerEvent(EventType.ENTER_DIRECTORY, withChildren, null, uri, null);
-        } else if (startingNode instanceof FileEntry f) {
-            //  Starting point for file is itself with nothing else to do, no directory to push onto stack,
-            //  just process the file and stop.  Only scenario when "directory" of event is null.
-            return new NeofjfsWalkerEvent(EventType.FILE, null, f, uri, null);
-        } else {
-            //  Hmmmm, what are we getting?
-            throw new Neo4jfsUnknownEntryException(uri, startingNode.getClass().getName());
+                //  Initial event when walk starts with directory is START_DIRECTORY.
+                return new NeofjfsWalkerEvent(EventType.ENTER_DIRECTORY, withChildren, null, uri, null);
+            case FileEntry f:
+                //  Starting point for file is itself with nothing else to do, no directory to push onto stack,
+                //  just process the file and stop.  Only scenario when "directory" of event is null.
+                return new NeofjfsWalkerEvent(EventType.FILE, null, f, uri, null);
+            default:
+                //  Hmmmm, what are we getting?
+                throw new Neo4jfsUnknownEntryException(uri, startingNode.getClass().getName());
         }
     }
 
