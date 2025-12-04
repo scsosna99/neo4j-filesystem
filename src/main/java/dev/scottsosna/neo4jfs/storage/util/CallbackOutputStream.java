@@ -10,10 +10,14 @@ import java.util.List;
  */
 public class CallbackOutputStream extends OutputStream {
 
-    //  Output stream being proxied.
+    /**
+     * OutputStream being proxied.
+     */
     private final OutputStream delegate;
 
-    //  Callbacks to be executed upon close.
+    /**
+     * List of callbacks to be executed ad\fter stream closed.
+     */
     private final List<Runnable> callbacks = new ArrayList<>();
 
     /**

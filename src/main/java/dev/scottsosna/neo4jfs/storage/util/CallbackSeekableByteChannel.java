@@ -11,9 +11,14 @@ import java.util.List;
  */
 public class CallbackSeekableByteChannel implements SeekableByteChannel {
 
+    /**
+     * SeekableByteChannel being proxied.
+     */
     private final SeekableByteChannel delegate;
 
-    //  Callbacks to be executed upon close.
+    /**
+     * List of callbacks to be executed after channel closed.
+     */
     private final List<Runnable> callbacks = new ArrayList<>();
 
     /**
@@ -81,5 +86,4 @@ public class CallbackSeekableByteChannel implements SeekableByteChannel {
     public boolean isOpen() {
         return delegate.isOpen();
     }
-
 }

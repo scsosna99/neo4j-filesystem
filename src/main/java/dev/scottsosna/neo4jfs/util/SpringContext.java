@@ -4,6 +4,9 @@ import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationContextAware;
 import org.springframework.stereotype.Component;
 
+/**
+ * Utility class for retrieving Spring beans, usually outside of Spring-managed components.
+ */
 @Component
 public class SpringContext implements ApplicationContextAware {
 

@@ -1,19 +1,30 @@
 package dev.scottsosna.neo4jfs.storage.util;
 
 import dev.scottsosna.neo4jfs.filesystem.Neo4jfsFileStore;
-import dev.scottsosna.neo4jfs.storage.StorageManager;
 
 import java.io.IOException;
-import java.nio.file.*;
+import java.nio.file.FileStore;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.attribute.FileAttributeView;
 import java.nio.file.attribute.FileStoreAttributeView;
 import java.util.Objects;
 
 import static dev.scottsosna.neo4jfs.config.Neo4jfsConstants.ATTRIBUTE_VIEW_NAME_BASIC;
 
+/**
+ * Java NIO {@code FileStore} implementation for local storage manager.
+ */
 public class LocalStorageFileStore extends Neo4jfsFileStore {
 
+    /**
+     * Partition directory path.
+     */
     private final Path partitionPath;
+
+    /**
+     * Utility class for useful file attributes, lazilly-created.
+     */
     private LocalFileStoreAttributes attribs = null;
 
     /**
@@ -117,25 +128,55 @@ public class LocalStorageFileStore extends Neo4jfsFileStore {
         return attribs;
     }
 
+    /**
+     * Utility class for getting attributes from local disk where {@code LocalStorageManager} stores its files.
+     */
     private final class LocalFileStoreAttributes {
+
+        /**
+         * File store for local disk
+         */
         final FileStore fstore;
+
+        /**
+         * Size of partition directory (which does not include size of files}.
+         */
         final long size;
 
+        /**
+         * Constructor
+         * @param partitionPath as provided by StorageManager
+         * @throws IOException if an I/O error occurs
+         */
         LocalFileStoreAttributes(Path partitionPath) throws IOException {
             this.size = Files.size(partitionPath);
             this.fstore = Files.getFileStore(partitionPath);
         }
 
+        /**
+         * getter
+         * @return total space used by partition directory
+         */
         long totalSpace() {
             return size;
         }
 
+        /**
+         * Getter
+         * @return how much usable space is left in partition directory
+         * @throws IOException
+         */
         long usableSpace() throws IOException {
             if (!fstore.isReadOnly())
                 return fstore.getUsableSpace();
             return 0;
         }
 
+        /**
+         * Getter
+         * @return how much unallocated space is left in partition directory
+         * @throws IOException if I/O error occurs
+         */
         long unallocatedSpace()  throws IOException {
             if (!fstore.isReadOnly())
                 return fstore.getUnallocatedSpace();

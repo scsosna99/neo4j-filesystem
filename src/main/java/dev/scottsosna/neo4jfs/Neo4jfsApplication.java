@@ -3,6 +3,9 @@ package dev.scottsosna.neo4jfs;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
+/**
+ * Neo4Jfs application class
+ */
 @SpringBootApplication
 public class Neo4jfsApplication {
 

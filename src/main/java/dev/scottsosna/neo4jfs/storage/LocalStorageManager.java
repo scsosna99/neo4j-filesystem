@@ -284,7 +284,7 @@ public class LocalStorageManager implements StorageManager {
     }
 
     /**
-     * During startup, ensure the directory where files are stored exists.
+     * Ensure the configured directory where files are stored exists and is actual directory.
      */
     @PostConstruct
     private void init() throws IOException{
