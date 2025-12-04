@@ -19,25 +19,46 @@ import java.util.stream.StreamSupport;
 
 import static dev.scottsosna.neo4jfs.config.Neo4jfsConstants.NEO4JFS_URI_SCHEME;
 
+/**
+ * Database functionality shared amongst all entry types.
+ */
 public class BaseEntryRepositoryImpl {
 
     //  Session factory for oft-use default database.
+    /**
+     * Session factor for oft-used default database.
+     */
     protected static SessionFactory defaultSessionFactory;
 
+    /**
+     * Holds Neo4J connection and authentication credentials.
+     */
     private Neo4jfsConfiguration config;
 
-    //  Neo4J session factories for each file system (database).  Static so factories can be shared
-    //  across multiple services.
+    /**
+     * Session factories for each Neo4Jfs partition (database), static to allow sharing across services.
+     */
     final private Map<String, SessionFactory> sessionFactories = new ConcurrentHashMap<>();
 
+    /**
+     * The "root" directory name (which, surprisingly, is ".").
+     */
+    protected static final String ROOT_DIRECTORY_NAME = Neo4jfsConstants.NAME_ROOT_DIRECTORY;
+
+    /**
+     * Various Cypher queries or chunks used for building complete query.
+     */
     private static final String MATCH_ENTRY = "(d%d {name: $name%d})";
     private static final String QUERY_DIRECTORY_AND_CHILD = "MATCH (p:Directory {id: $id})-[]->(c {name: $name}) RETURN p,c";
     private static final String QUERY_DELETE_NODE = "MATCH (n {id: $id}) DETACH DELETE n";
     private static final String QUERY_DELETE_RELATIONSHIP = "MATCH (start {id: $startId})-[r]-(end {id: $endId}) DELETE r";
     private static final String RELATIONSHIP_LINK = "-[]->";
 
-    protected static final String ROOT_DIRECTORY_NAME = Neo4jfsConstants.NAME_ROOT_DIRECTORY;
 
+    /**
+     * Constructor
+     * @param config configuration bean hold Neo4J connection and authentication credentials.
+     */
     public BaseEntryRepositoryImpl(Neo4jfsConfiguration config) {
         super();
         this.config = config;
@@ -47,19 +68,21 @@ public class BaseEntryRepositoryImpl {
      * Attempt to find a child of a directory by name.  The child may be either a directory or a file (or truthfully
      * anything else) but the parent must be a directory.  The primary use case is to determine the existence/lack
      * thereof of a child for a specific name and, when present, its type.
-     * @param uri URI of the file system.
+     *
+     * @param fsUri URI of the file system.
      * @param directoryNodeId generated node id for the parent directory
      * @param childNodeName name of the child node desired
      * @return the child node, when found, or null.
      */
-    public BaseEntry findNamedChild(URI uri, String directoryNodeId, String childNodeName) {
+    public BaseEntry findNamedChild(URI fsUri, String directoryNodeId, String childNodeName) {
         Map<String,Object> params = Map.of("id", directoryNodeId, "name", childNodeName);
-        List<BaseEntry> entries = query(uri, QUERY_DIRECTORY_AND_CHILD, params, BaseEntry.class);
+        List<BaseEntry> entries = query(fsUri, QUERY_DIRECTORY_AND_CHILD, params, BaseEntry.class);
         return (entries.isEmpty() ? null : entries.get(1));
     }
 
     /**
      * Save or update an entry to Neo4J
+     *
      * @param uri URI of the file system, using host to identify database.
      * @param entry entry to be persisted
      * @param clazz specific class of entry, e.g. DirectoryEntry or FileEntry
@@ -71,6 +94,7 @@ public class BaseEntryRepositoryImpl {
 
     /**
      * Remove the relationship between two nodes identified by their ids.
+     *
      * @param uri URI of the file system, using host to identify database.
      * @param startId start node from which outgoing relationship is to be removed
      * @param endId end node whose incoming relationship is to be removed
@@ -81,7 +105,9 @@ public class BaseEntryRepositoryImpl {
 
     /**
      * Only update last accessed timestamp for entry provided.  To guarantee inadvertent changes to entry aren't
-     * accidentally persisted, the entry is loaded first and then updated
+     * accidentally persisted, the entry is loaded first and then updated.  The update happens asynchronously as
+     * it shouldn't require that anyone wait for it to complete.
+     *
      * @param uri URI of the file system, using host to identify database.
      * @param entry entry to have its last accessed timestamp updated
      */
@@ -96,21 +122,21 @@ public class BaseEntryRepositoryImpl {
     /**
      * Retrieve of create OGM session factory based on the URI.  Confirm that protocol is correct and
      * then use host as the database name.
+     *
      * @param uri URI for the file system
      * @return session factory
      */
     protected SessionFactory getSessionFactory(URI uri) {
-        validate(uri);
         return sessionFactory(uri.getHost());
     }
 
     /**
      * Load an object from Neo4J by its id.
+     *
      * @param uri URI for the file system
      * @param nodeId id of the node to load
      * @param clazz the class of the object to load
      * @return the loaded object
-     * @param <T>
      */
     protected <T extends BaseEntry> T load(URI uri, String nodeId, Class<T> clazz) {
         return getSessionFactory(uri).openSession().load(clazz, nodeId);
@@ -118,6 +144,7 @@ public class BaseEntryRepositoryImpl {
 
     /**
      * Retrieve or create OGM session factory for the specified database.
+     *
      * @param dbName database for which session factory is required
      * @return session factory for database.
      */
@@ -136,7 +163,8 @@ public class BaseEntryRepositoryImpl {
     }
 
     /**
-     * Build configuration for connecting to neo4j
+     * Build configuration for connecting to Neo4J database.
+     *
      * @param dbName database name to connect to
      * @return built configuration
      */
@@ -150,35 +178,35 @@ public class BaseEntryRepositoryImpl {
     }
 
     /**
-     * Confirms the URI scheme is correct.
-     * @param uri
+     * Deletes entry - directory, file, etc. - by node ID.
+     *
+     * @param fsUri Neo4Jfs URI which identifies the partition (database)
+     * @param nodeId identifies node to be deleted.
+     * @return true if successfully deleted, false otherwise.
      */
-    protected void validate (URI uri) {
-        if (!NEO4JFS_URI_SCHEME.equals(uri.getScheme())) {
-            throw new IllegalArgumentException("URI scheme must be " + NEO4JFS_URI_SCHEME + ".");
-        }
-    }
-
-    protected boolean deleteNodeById(URI uri, String nodeId) {
-        Result r = getSessionFactory(uri).openSession().query(QUERY_DELETE_NODE, Map.of("id", nodeId));
+    protected boolean deleteNodeById(URI fsUri, String nodeId) {
+        Result r = getSessionFactory(fsUri).openSession().query(QUERY_DELETE_NODE, Map.of("id", nodeId));
         return r.queryStatistics().getNodesDeleted() > 0;
     }
 
     /**
      * Execute Cypher query and return objects found
-     * @param uri for the file system
+     *
+     * @param fsUri for the file system
      * @param query Cypher query to execute
      * @param parameters parameters to pass to Cypher query
      * @param clazz specific class of objects being returned
      * @return list of 0 or more objects of type clazz
      */
-    protected <T> List<T> query(URI uri, String query, Map<String,Object> parameters, Class<T> clazz) {
-        var results = getSessionFactory(uri).openSession().query(clazz, query, parameters);
+    protected <T> List<T> query(URI fsUri, String query, Map<String,Object> parameters, Class<T> clazz) {
+        var results = getSessionFactory(fsUri).openSession().query(clazz, query, parameters);
         return StreamSupport.stream(results.spliterator(), false).toList();
     }
 
     /**
-     * Execute Cypher query and return objects found
+     * Execute Cypher query and return result objects
+     *
+     * @param uri Neo4J URI identifying the partition (database)
      * @param query Cypher query to execute
      * @param clazz specific class of objects being returned
      * @return list of 0 or more objects of type clazz
@@ -188,22 +216,22 @@ public class BaseEntryRepositoryImpl {
     }
 
     /**
-     * Executes non-Cypher query where results are maps which require manual deserialization.
-     * @param query
-     * @param parameters
-     * @return
+     * Executes non-Cypher command where results are maps which require manual deserialization.
+     * @param command Neo4J command to execute, e.g. SHOW DATABASE, CREATE DATABASE, etc.
+     * @param parameters parameters used as substitution parameters
+     * @return raw Neo4J OGM results
      */
-    protected Result query(String query, Map<String,String> parameters) {
-        return defaultSessionFactory.openSession().query(query, parameters);
+    protected Result query(String command, Map<String,String> parameters) {
+        return defaultSessionFactory.openSession().query(command, parameters);
     }
 
     /**
      * Executes non-Cypher query where results are maps which require manual deserialization.
-     * @param query query to execute
-     * @return
+     * @param command Neo4J command to execute, e.g. SHOW DATABASE, CREATE DATABASE, etc.
+     * @return raw Neo4J OGM results.
      */
-    protected Result query(String query) {
-        return query(query, Map.of());
+    protected Result query(String command) {
+        return query(command, Map.of());
     }
 
     /**
@@ -226,10 +254,9 @@ public class BaseEntryRepositoryImpl {
         if (sbReturn != null) sbReturn.append(", d").append(index);
     }
 
-
     /**
-     * Updates timestamps as appropriate for entry.  No created timestamp means brand new entry requiring
-     * all timestamps set; otherwise just set last modified.
+     * Updates timestamps as appropriate for entry.  Entries persisted for first time will have no create timestamp,
+     * therefore all timestamps set; otherwise just set last modified.
      * @param entry
      */
     private void updateTimestamps (BaseEntry entry) {
@@ -243,6 +270,10 @@ public class BaseEntryRepositoryImpl {
         }
     }
 
+    /**
+     * After component constructed, create the default session factory, used whenever a partition-specific
+     * query is not required.
+     */
     @PostConstruct
     private void init() {
         //  Get existing databases and look for one marked "default"
