@@ -2,8 +2,10 @@ package dev.scottsosna.neo4jfs.storage;
 
 import dev.scottsosna.neo4jfs.config.Neo4jfsConstants;
 import dev.scottsosna.neo4jfs.database.model.storage.StorageFileInfo;
+import dev.scottsosna.neo4jfs.exception.Neo4jfsNoSuchPartition;
 import dev.scottsosna.neo4jfs.service.util.LocalStorageTreeDeleteVisitor;
 import dev.scottsosna.neo4jfs.storage.util.CallbackOutputStream;
+import dev.scottsosna.neo4jfs.storage.util.LocalStorageFileStore;
 import jakarta.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -15,12 +17,13 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.URI;
+import java.nio.channels.SeekableByteChannel;
 import java.nio.file.*;
+import java.util.Set;
 import java.util.UUID;
 
 /**
  * Storage Manager implementation that uses local disk for file management.
- *
  * Each Neo4Jfs instance has its own "partition" - the URI host - to segregate and manage files separately, providing
  * protection from cross-instance/cross-partition file access/modifications.  The internal file names are random UUIDs.
  * For scaling/performance, files are stored in subdirectories based on the first two characters of the UUID.
@@ -28,13 +31,20 @@ import java.util.UUID;
 @Service("local")
 public class LocalStorageManager implements StorageManager {
 
-    //  The base directory where the Neo4Jfs files will be stored.
+    /**
+     * The base directory where Neo4Jfs files will be stored.
+     */
     @Value("${neo4jis.local.directory:#{null}}")
     private String neo4jfsBasePath;
 
-    //  Visitor that handles deleting files/directories bottom up as tree is walked.
+    /**
+     * Visitor that handles deleting files/directories bottom up as tree is walked.
+     */
     private final FileVisitor<Path> treeDeleteVisitor = new LocalStorageTreeDeleteVisitor();
 
+    /**
+     * Logger for this class.
+     */
     private final static Logger logger = LoggerFactory.getLogger(LocalStorageManager.class);
 
     /**
@@ -61,7 +71,25 @@ public class LocalStorageManager implements StorageManager {
     }
 
     /**
+     * Get the FileStore as supported by the Storage Manager implementation.
+     *
+     * @param fsUri base Neo4Jfs URI
+     * @return FileStore for the partition.
+     * @throws IOException partition directory does not exist.
+     */
+    public FileStore getPartitionFileStore(URI fsUri) throws IOException {
+        String partitionName = determinePartition(fsUri);
+        Path partitionPath = Path.of(neo4jfsBasePath, partitionName);
+        if (partitionPath.toFile().exists()) {
+            return new LocalStorageFileStore(partitionPath);
+        } else {
+            throw new Neo4jfsNoSuchPartition(partitionName);
+        }
+    }
+
+    /**
      * Creates empty Neo4Jfs file to be managed by Storage Manager
+     *
      * @param uri URI for the Neo4Jfs file
      * @return file details, including storage id (relative path)
      * @throws IOException unable to create file
@@ -77,6 +105,7 @@ public class LocalStorageManager implements StorageManager {
 
     /**
      * Create new Neo4Jfs file to be managed by Storage Manager.
+     *
      * @param uri complete URI of the Neo4Jfs file
      * @param is input stream for the file contents
      * @return file details, including storage id (relative path) and size
@@ -122,6 +151,7 @@ public class LocalStorageManager implements StorageManager {
 
     /**
      * Copy existing file already managed by StorageManager, most likely due to file system copy.
+     *
      * @param fsUri base Neo4Jfs URI
      * @param storageId implementation-specific identifier for the file to be copied.
      * @return details for new file, including storage id (relative path) and size
@@ -136,12 +166,12 @@ public class LocalStorageManager implements StorageManager {
 
         //  Attempt to copy file
         Files.copy(source, destination);
-
         return getFileInfo(fsUri, destination.toString());
     }
 
     /**
      * Provide details about file managed by Storage Manager, based on storage id.
+     *
      * @param fsUri Neo4Jfs filesystem URI
      * @param storageId implementation-specific identifier for the file
      * @return file details, such as size.
@@ -154,6 +184,7 @@ public class LocalStorageManager implements StorageManager {
 
     /**
      * Create output stream to allow file to be written to.
+     *
      * @param uri Neo4J file URI
      * @param storageId implementation-specific identifier for the file
      * @return OutputStream for writing data to file
@@ -165,7 +196,22 @@ public class LocalStorageManager implements StorageManager {
     }
 
     /**
+     * Creates {@code SeekableByteChannel} for the Neo4Jfs underlying file.
+     *
+     * @param fsUri base Neo4Jfs URI
+     * @param storageId implementation-specific identifier for the file
+     * @param options options for opening the file
+     * @return {@code SeekableByteChannel} based on options passed in
+     * @throws IOException error occurred opening file.
+     */
+    public SeekableByteChannel getSeekableByteChannel(URI fsUri, String storageId, Set<? extends OpenOption> options) throws IOException {
+        return Files.newByteChannel(generateCompletePath(fsUri, Path.of(storageId)), options);
+    }
+
+
+    /**
      * Create input stream to allow file to be read
+     *
      * @param uri Neo4J file URI
      * @param storageId implementation-specific identifier for the file
      * @return InputStream for reading data from file
@@ -178,6 +224,7 @@ public class LocalStorageManager implements StorageManager {
 
     /**
      * Delete file from storage manager, most likely because file deleted from Neo4Jfs filesystem.
+     *
      * @param fsUri base Neo4Jfs URI
      * @param storageId the storage-specific identifier, in this case a relative path.
      */
@@ -188,6 +235,7 @@ public class LocalStorageManager implements StorageManager {
 
     /**
      * For local disk storage, partition equates with the Neo4J database, using URI's host as partition name.
+     *
      * @param uri Neo4Jfs filesystem URI
      * @return partition name
      */
@@ -198,6 +246,7 @@ public class LocalStorageManager implements StorageManager {
     /**
      * The relative path is partition-specific, prepend the base pathname of the local storage manager which
      * represents the complete path of the soon-to-be-stored file.
+     *
      * @param fsUri base Neo4Jfs URI
      * @param relativePath partion and local file to be stored.
      * @return absolute path of the file to store
@@ -222,6 +271,7 @@ public class LocalStorageManager implements StorageManager {
      * Within each partition, the files are segregated into subdirectories to hopefully avoid too many files in a
      * single directory that would cause performance issues.  New subdirectories need to be created before
      * files are stored.
+     *
      * @param completePath destination pathname of the saved/updated file
      */
     private void verifySubdirectory(Path completePath) throws IOException {

@@ -9,15 +9,20 @@ import dev.scottsosna.neo4jfs.database.repository.util.DirectoryDeleteFileVisito
 import dev.scottsosna.neo4jfs.database.repository.util.Neo4jfsFileAttributes;
 import dev.scottsosna.neo4jfs.database.repository.util.Neo4jfsTreeWalker;
 import dev.scottsosna.neo4jfs.exception.Neo4jfsUnknownEntryException;
+import org.apache.logging.log4j.CloseableThreadContext;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
 import java.net.URI;
 import java.nio.file.*;
+import java.nio.file.attribute.BasicFileAttributeView;
+import java.time.Instant;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
+import static dev.scottsosna.neo4jfs.config.Neo4jfsConstants.*;
 
 @Service
 public class DirectoryServiceImpl extends BaseNeo4jfsService implements DirectoryService {
@@ -26,25 +31,45 @@ public class DirectoryServiceImpl extends BaseNeo4jfsService implements Director
     private FileService fileService;
     private final Map<String, FileVisitor> visitorMap = new HashMap<>();
 
+    /**
+     * Constructor
+     * @param repository database repository for managing Directory nodes in Neo4J.
+     */
     public DirectoryServiceImpl(DirectoryEntryRepository repository) {
         this.repository = repository;
     }
 
-    public DirectoryEntry createRoot (URI uri) {
-        checkUri(uri);
-        return repository.createRoot(uri);
+    /**
+     * Each file system needs a root '/' directory that is (somewhat) immutable
+     * @param fsUri Neo4Jfs URI for the specific partition
+     * @return the newly-created root directory
+     */
+    public DirectoryEntry createRoot (URI fsUri) {
+        checkUri(fsUri);
+        return repository.createRoot(fsUri);
     }
 
-    public DirectoryEntry findOrCreateRoot(URI uri) {
-        checkUri(uri);
-        DirectoryEntry d = repository.findRoot(uri);
+    /**
+     * Create file system root '/' directory if one doesn't already exist
+     * @param fsUri Neo4Jfs URI for the specific partition
+     * @return the root directory
+     */
+    public DirectoryEntry findOrCreateRoot(URI fsUri) {
+        checkUri(fsUri);
+        DirectoryEntry d = repository.findRoot(fsUri);
         if (d == null) {
-            d = repository.createRoot(uri);
+            d = repository.createRoot(fsUri);
         }
 
         return d;
     }
 
+    /**
+     * Create new directory in file system
+     * @param uri fully-qualified Neo4Jfs URI specifying directory to create
+     * @return the newly created directory
+     * @throws IOException I/O problem creating the new directory.
+     */
     public DirectoryEntry mkdir (URI uri) throws IOException {
         checkUri(uri);
 
@@ -70,15 +95,28 @@ public class DirectoryServiceImpl extends BaseNeo4jfsService implements Director
             repository.save(uri, dir);
             return newbie;
         } else {
-            //  Not a directory, fail.
+            //  Parent directory is in fact not a directory, fail.
             throw new NotDirectoryException(parent.toString());
         }
     }
 
     /**
+     * Adds file to the existing directory.
+     * @param fsUri Neo4Jfs file system URI
+     * @param parent parent/containing directory of the file to add
+     * @param file file to add
+     * @return updated DirectoryEntry
+     */
+    public DirectoryEntry addFile(URI fsUri, DirectoryEntry parent, FileEntry file) {
+        checkUri(fsUri);
+        parent.setFiles(List.of(file));
+        return repository.save(fsUri, parent);
+    }
+
+    /**
      * Delete node specified by URI, file or directory
      * @param uri Neo4Jfs URI specifying either file or directory to delete.
-     * @throws IOException thrown for unresolved pathname or an error doing delete.
+     * @throws IOException I/O errors such as unresolved pathname or delete failed.
      */
     public void delete(URI uri) throws IOException {
 
@@ -97,6 +135,11 @@ public class DirectoryServiceImpl extends BaseNeo4jfsService implements Director
             default:
                 throw new Neo4jfsUnknownEntryException(uri, lastPart.getClass().getName());
         }
+    }
+
+    @Override
+    public void copy(URI fromUri, URI toUri, CopyOption... options) throws IOException {
+
     }
 
     /**
@@ -185,10 +228,11 @@ public class DirectoryServiceImpl extends BaseNeo4jfsService implements Director
                 throw new Neo4jfsUnknownEntryException(fromUri, fromEntry.getClass().getName());
         }
     }
+
     /**
-     * Deletes (removes) an empty directory specified by URI, similar to *nix {@code rmdir} command
+     * Deletes an empty directory specified by URI, similar to *nix {@code rmdir} command.
      * @param uri Neo4Jfs URI specifying directory to delete
-     * @throws IOException an error occurred, such as directory not empty.
+     * @throws IOException error occurred, such as directory not empty.
      */
     public void rmdir(URI uri) throws IOException {
 
@@ -200,9 +244,10 @@ public class DirectoryServiceImpl extends BaseNeo4jfsService implements Director
     }
 
     /**
-     * Walks directory from node specified by URI and deletes everything bottom-up, similar to *nix {@code rm -rf} command
+     * Walk directory from starting point specified by URI and deletes files/directories/everything
+     * bottom-up, similar to *nix {@code rm -rf} command
      * @param uri Neo4Jfs URI for the directory or file to delete.
-     * @throws IOException
+     * @throws IOException I/O error occurred while deleting tree.
      */
     public void rmdirRecursively(URI uri) throws IOException {
 
@@ -226,6 +271,11 @@ public class DirectoryServiceImpl extends BaseNeo4jfsService implements Director
         }
     }
 
+    /**
+     * Walks tree, dumping file structure to logger
+     * @param uri Neo4Jfs URI for the directory to dump
+     * @throws IOException I/O error occurred while walking tree
+     */
     public void dumpTree(URI uri) throws IOException {
         checkUri(uri);
         walkFileTree(uri, new DebuggingFileVisitor());
@@ -246,18 +296,53 @@ public class DirectoryServiceImpl extends BaseNeo4jfsService implements Director
         return repository.getParentWithChildren(uri, parentId, skip, limit);
     }
 
-    public DirectoryEntry addFile(URI uri, DirectoryEntry parent, FileEntry file) {
+    /**
+     * Returns the entry specified by URI as BasicFileAttributeView, needed by file system provider.
+     * @param uri Neo4Jfs URI for the directory or file to read attribute view for.
+     * @param options ignored
+     * @return the attributes as a "view"
+     * @throws IOException I/O error occurred while retrieving the entry to return
+     */
+    public BasicFileAttributeView readAttributeView(URI uri, LinkOption... options) throws IOException {
         checkUri(uri);
-        parent.setFiles(List.of(file));
-        return repository.save(uri, parent);
+        return find(uri).getLast();
     }
 
-    public DirectoryEntry getRoot(URI uri) {
+    /**
+     * Attempt to set attribute with value provided
+     * @param uri Neo4Jfs URI for directory/file to set attribute.
+     * @param viewName name of view to modify
+     * @param attribute attribute name to modify
+     * @param value new attribute values
+     * @param options options for any linked entries
+     * @throws IOException if I/O error occurs
+     */
+    public void setAttribute(URI uri,
+                             String viewName,
+                             String attribute,
+                             Object value,
+                             LinkOption... options) throws IOException {
         checkUri(uri);
-        DirectoryEntry d = repository.findRoot(uri);
-        return d;
+        BaseEntry entry = find(uri).getLast();
+
+        switch (viewName) {
+            case ATTRIBUTE_VIEW_NAME_BASIC:
+                setAttributeBasic(entry, attribute, value);
+                break;
+            default:
+                //  Generally view name has already been validated, but just in case.
+                throw new IllegalArgumentException("Setting attribute not supported for view: %s".formatted(attribute));
+        }
+
+        //  Once here we know something modified as otherwise an exception is thrown.
+        repository.save(uri, entry, BaseEntry.class);
     }
 
+    /**
+     * Check for file/directory exists
+     * @param uri Neo4Jfs URI for the directory or file to check
+     * @return true if exists, false otherwise.
+     */
     public boolean exists(URI uri) {
         checkUri(uri);
         return repository.pathExists(uri);
@@ -389,6 +474,47 @@ public class DirectoryServiceImpl extends BaseNeo4jfsService implements Director
     }
 
     /**
+     * Updates entry for attributes in the basic view
+     * @param entryToUpdate entry to update
+     * @param attribute attribute name to modify
+     * @param value new attribute values
+     * @throws IOException
+     */
+    private void setAttributeBasic(BaseEntry entryToUpdate,
+                                   String attribute,
+                                   Object value) throws IOException {
+
+        switch (attribute) {
+            case BASIC_ATTRIBUTE_CREATE_TIME:
+                if (value instanceof Instant i)
+                    entryToUpdate.setCreated(i);
+                else if (value instanceof Long l)
+                    entryToUpdate.setCreated(Instant.ofEpochMilli(l));
+                else
+                    throw new IllegalArgumentException("Invalid attribute value for %s".formatted(attribute));
+                break;
+            case BASIC_ATTRIBUTE_LAST_ACCESS_TIME:
+                if (value instanceof Instant i)
+                    entryToUpdate.setLastAccessed(i);
+                else if (value instanceof Long l)
+                    entryToUpdate.setLastAccessed(Instant.ofEpochMilli(l));
+                else
+                    throw new IllegalArgumentException("Invalid attribute value for %s".formatted(attribute));
+                break;
+            case BASIC_ATTRIBUTE_LAST_MODIFIED_TIME:
+                if (value instanceof Instant i)
+                    entryToUpdate.setLastModified(i);
+                else if (value instanceof Long l)
+                    entryToUpdate.setLastModified(Instant.ofEpochMilli(l));
+                else
+                    throw new IllegalArgumentException("Invalid attribute value for %s".formatted(attribute));
+                break;
+            default:
+                throw new IllegalArgumentException("Setting attribute not supported: %s".formatted(attribute));
+        }
+    }
+
+    /**
      * Walk the Neo4J file system tree and apply the visitor to each node (file, directory, etc)
      * based on the event type
      * @param uri starting point in tree
@@ -441,6 +567,11 @@ public class DirectoryServiceImpl extends BaseNeo4jfsService implements Director
         return options != null && Arrays.stream(options).anyMatch(requested::equals);
     }
 
+    /**
+     * Some visitors are components which register themselves for simplified usage (e.g., no {@code new XYZFileVisitor()}
+     * @param key unique identifier for visitor
+     * @param visitor visitor instance.
+     */
     public void registerVisitor(final String key, final FileVisitor visitor) {
         visitorMap.put(key, visitor);
     }
@@ -449,7 +580,7 @@ public class DirectoryServiceImpl extends BaseNeo4jfsService implements Director
      * Avoids circular references between FileService and DirectoryService by having FileService register itself.
      * @param fileService
      */
-    public void registerFileService(FileService fileService) {
+    public void registerFileService(final FileService fileService) {
         this.fileService = fileService;
     }
 }

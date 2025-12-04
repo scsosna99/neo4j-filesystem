@@ -1,16 +1,17 @@
 package dev.scottsosna.neo4jfs.storage.util;
 
-import java.io.*;
+import java.io.IOException;
+import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Proxies an output stream to allow actions to be taken upon close.
+ * Proxies an output stream to allow post-close actions.
  */
 public class CallbackOutputStream extends OutputStream {
 
     //  Output stream being proxied.
-    private final OutputStream os;
+    private final OutputStream delegate;
 
     //  Callbacks to be executed upon close.
     private final List<Runnable> callbacks = new ArrayList<>();
@@ -20,7 +21,7 @@ public class CallbackOutputStream extends OutputStream {
      * @param os OutputStream to be proxied.
      */
     public CallbackOutputStream(OutputStream os) {
-        this.os = os;
+        this.delegate = os;
     }
 
     /**
@@ -37,7 +38,7 @@ public class CallbackOutputStream extends OutputStream {
      */
     @Override
     public void close() throws IOException {
-        os.close();
+        delegate.close();
 
         //  Execute all callbacks registered to this stream.
         callbacks.forEach(Runnable::run);
@@ -49,21 +50,21 @@ public class CallbackOutputStream extends OutputStream {
 
     @Override
     public void flush() throws IOException {
-        os.flush();
+        delegate.flush();
     }
 
     @Override
     public void write(byte[] b) throws IOException {
-        os.write(b);
+        delegate.write(b);
     }
 
     @Override
     public void write(byte[] b, int off, int len) throws IOException {
-        os.write(b, off, len);
+        delegate.write(b, off, len);
     }
 
     @Override
     public void write(int b) throws IOException {
-        os.write(b);
+        delegate.write(b);
     }
 }

@@ -14,6 +14,7 @@ public class DirectoryBuilder {
         dir.name = name;
         dir.userName = userName;
         dir.groupName = groupName;
+        dir.hidden = false;
         dir.root = root;
         dir.subdirs = new ArrayList<>();
         dir.files = new ArrayList<>();

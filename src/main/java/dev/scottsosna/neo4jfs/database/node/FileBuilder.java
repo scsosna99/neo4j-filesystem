@@ -11,6 +11,7 @@ public class FileBuilder {
         file.name = name;
         file.storageId = storageId;
         file.size = size;
+        file.hidden = false;
         return file;
     }
 

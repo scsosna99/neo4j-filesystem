@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 
 import java.io.IOException;
 import java.net.URI;
+import java.nio.ByteBuffer;
 import java.nio.file.*;
 import java.util.Map;
 
@@ -39,42 +40,46 @@ public class FileSystemServiceImpl extends BaseNeo4jfsService implements FileSys
     /**
      * Creates new or validates existing file system, ensures root "directory" (node) exists and that
      * storage partition is available/usable.
-     * @param uri base URI for the file system.
+     * @param fsUri Neo4Jfs URI for the file system to initialize.
      */
-    public void init(URI uri) throws IOException {
-        checkUri(uri);
+    public void init(URI fsUri) throws IOException {
+        checkUri(fsUri);
 
         //  Does a database exist for the partition?
-        Database db = repository.find(uri);
+        Database db = repository.find(fsUri);
         if (db != null) {
             //  Database exists, verify usability
             verifyDatabaseUsability(db);
-            directoryService.findOrCreateRoot(uri);
+            directoryService.findOrCreateRoot(fsUri);
         } else {
             //  No existing database, create new and add root directory.
-            repository.create(uri);
-            directoryService.createRoot(uri);
+            repository.create(fsUri);
+            directoryService.createRoot(fsUri);
         }
 
         //  Also make sure storage manager is available/initialized.
-        storageManager.initPartition(uri);
+        storageManager.initPartition(fsUri);
     }
 
     /**
-     * Completely deletes the Neo4J file system.
-     * @param uri base URI for the file system.
+     * Deletes the complete file system, including content managed by Storage Manager.
+     * @param fsUri Neo4Jfs URI for the file system to delete.
      */
-    public void drop(URI uri) {
+    public void drop(URI fsUri) {
         //  Best effort made.  If Neo4J database fails to delete, no attempt to delete storage partition so the file
         //  system is still usable.  If Neo4J dataabase is deleted but storage partition fails to delete, the
         //  physical files are left dangling: unfortunate, but since Neo4J database is gone files aren't usable.
         //  Manual cleanup at a later date.
         try {
-            repository.drop(uri);
-            storageManager.dropPartition(uri);
+            repository.drop(fsUri);
+            storageManager.dropPartition(fsUri);
         } catch (Exception e) {
 
         }
+    }
+
+    public FileStore getFileStore(URI uri) throws IOException {
+        return storageManager.getPartitionFileStore(uri);
     }
 
     /**
@@ -91,11 +96,10 @@ public class FileSystemServiceImpl extends BaseNeo4jfsService implements FileSys
     @Scheduled(initialDelay = 2000L)
     public void test() {
         try {
-            try (FileSystem fs = FileSystems.newFileSystem(URI.create("neo4jfs://scsosna99/"),
-                Map.of(
-                    FileSystemService.class.getName(), this,
-                    DirectoryService.class.getName(), directoryService,
-                    FileService.class.getName(), fileService))) {
+            var dir = Files.newDirectoryStream(Path.of("/Users/scsosna/data/src")).iterator();
+            System.out.println(dir);
+            try (FileSystem fs = FileSystems.newFileSystem(URI.create("neo4jfs://scsosna99/"), Map.of())) {
+//                Files.getFileStore(Path.of(new URI("neo4jfs://scsosna99")));
                 Files.createDirectory(fs.getPath("/scs1"));
                 Files.createDirectory(fs.getPath("/scs1/scs2"));
 
@@ -109,12 +113,13 @@ public class FileSystemServiceImpl extends BaseNeo4jfsService implements FileSys
                 fileService.create(new URI("neo4jfs://scsosna99/def/myThirdFile"), Path.of("/Users/scsosna/data/music/manu/viva_la_colifata/1_02_Sabias_Palabras.mp3"));
                 fileService.create(new URI("neo4jfs://scsosna99/def/myFourthFile"), Path.of("/Users/scsosna/data/music/manu/viva_la_colifata/1_02_Sabias_Palabras.mp3"));
                 fileService.delete(new URI("neo4jfs://scsosna99/def/myFourthFile"));
-                System.out.println("completed");
-                directoryService.dumpTree(new URI("neo4jfs://scsosna99/"));
-                String copiedStorageId = "";
-                storageManager.copyFile(new URI("neo4jfs://scsosna99/"), copiedStorageId);
+//                directoryService.dumpTree(new URI("neo4jfs://scsosna99/"));
                 Files.copy(Path.of("/Users/scsosna/data/music/manu/siberie_metait_conte/14_Siberie_Fleuve_Amour.mp3"), fs.getPath("/abc/random.mp3"));
+                var map = Files.readAttributes(fs.getPath("/abc/random.mp3"), "basic:creationTime,size,lastModifiedTime", LinkOption.NOFOLLOW_LINKS);
+                System.out.println(map);
+                Files.setAttribute(fs.getPath("/abc"), "basic:lastModifiedTime", 234456L);
 //                Files.copy(Path.of("/Users/scsosna/data/music/manu/viva_la_colifata/1_02_Sabias_Palabras.mp3"), fs.getPath("/abc/random.mp3"));
+
 
 //                Files.createDirectories(fs.getPath("/scs1/scs2/scs3"));
 //                Files.delete(fs.getPath("/abc/myFirstFile"));
@@ -135,14 +140,12 @@ public class FileSystemServiceImpl extends BaseNeo4jfsService implements FileSys
                 Files.move(fs.getPath("/abc"), fs.getPath("/scs1/abc"));
                 Files.move(fs.getPath("/scs1/abc/myThirdFile"), fs.getPath("/myRootFile"), StandardCopyOption.REPLACE_EXISTING);
                 Files.move(fs.getPath("/scs1/abc"), fs.getPath("/def/hij"), StandardCopyOption.REPLACE_EXISTING);
-                System.out.println("completed");
 
 
 //            directoryService.mkdir(new URI("neo4jfs://scsosna98/abc/def"));
 //            directoryService.mkdir(new URI("neo4jfs://scsosna98/abc/yui"));
 //            directoryService.mkdir(new URI("neo4jfs://scsosna98/abc/def/qqq"));
 //            var p = directoryService.parent(new URI("neo4jfs://scsosna98/abc/def/qqq"));
-//            System.out.println(p);
             }
         } catch (Exception e) {
             System.out.println(e.getMessage());

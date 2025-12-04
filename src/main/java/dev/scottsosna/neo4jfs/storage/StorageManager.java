@@ -6,6 +6,10 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.URI;
+import java.nio.channels.SeekableByteChannel;
+import java.nio.file.FileStore;
+import java.nio.file.OpenOption;
+import java.util.Set;
 
 /**
  * Interface for storage managers implementation.
@@ -26,6 +30,13 @@ public interface StorageManager {
      * @param fsUri base Neo4Jfs URI
      */
     void initPartition(URI fsUri) throws IOException;
+
+    /**
+     * Get the FileStore as supported by the Storage Manager implementation.
+     * @param fsUri base Neo4Jfs URI
+     * @return FileStore for the partition.
+     */
+    FileStore getPartitionFileStore(URI fsUri) throws IOException;
 
     /**
      * Copy existing file already managed by StorageManager, most likely due to file system copy.
@@ -85,6 +96,16 @@ public interface StorageManager {
      * @throws IOException file doesn't exist, isn't accessible, isn't writeable
      */
     OutputStream getFileOutputStream(URI uri, String storageId) throws IOException;
+
+    /**
+     *
+     * @param fsUri base Neo4Jfs URI
+     * @param storageId implementation-specific identifier for the file
+     * @param options options for opening the file
+     * @return {@code SeekableByteChannel} based on options passed in
+     * @throws IOException error occurred opening file.
+     */
+    SeekableByteChannel getSeekableByteChannel(URI fsUri, String storageId,  Set<? extends OpenOption> options) throws IOException;
 
     /**
      * Updates an existing file in Neo4Jfs.

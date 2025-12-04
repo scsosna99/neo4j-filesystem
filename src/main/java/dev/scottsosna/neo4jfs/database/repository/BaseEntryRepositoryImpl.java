@@ -8,6 +8,7 @@ import org.neo4j.ogm.config.Configuration;
 import org.neo4j.ogm.model.Result;
 import org.neo4j.ogm.session.Session;
 import org.neo4j.ogm.session.SessionFactory;
+import org.springframework.scheduling.annotation.Async;
 
 import java.net.URI;
 import java.time.Instant;
@@ -83,14 +84,13 @@ public class BaseEntryRepositoryImpl {
      * accidentally persisted, the entry is loaded first and then updated
      * @param uri URI of the file system, using host to identify database.
      * @param entry entry to have its last accessed timestamp updated
-     * @return the entry with its last accessed timestamp updated.
      */
-    public BaseEntry updateLastAccessed(URI uri, BaseEntry entry) {
+    @Async
+    public void updateLastAccessed(URI uri, BaseEntry entry, Class<? extends BaseEntry> clazz) {
         Session session = getSessionFactory(uri).openSession();
-        BaseEntry loaded = session.load(BaseEntry.class, entry.getId());
+        BaseEntry loaded = session.load(clazz, entry.getId());
         loaded.setLastAccessed(Instant.now());
         session.save(loaded);
-        return entry;
     }
 
     /**

@@ -7,6 +7,7 @@ import dev.scottsosna.neo4jfs.database.node.FileEntry;
 import dev.scottsosna.neo4jfs.database.repository.FileEntryRepository;
 import dev.scottsosna.neo4jfs.storage.StorageManager;
 import dev.scottsosna.neo4jfs.storage.util.CallbackOutputStream;
+import dev.scottsosna.neo4jfs.storage.util.CallbackSeekableByteChannel;
 import jakarta.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -16,11 +17,12 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.URI;
-import java.nio.file.FileAlreadyExistsException;
-import java.nio.file.Files;
-import java.nio.file.NoSuchFileException;
-import java.nio.file.Path;
+import java.nio.channels.SeekableByteChannel;
+import java.nio.file.*;
+import java.nio.file.attribute.FileAttribute;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 @Service
 public class FileServiceImpl extends BaseNeo4jfsService implements FileService {
@@ -30,6 +32,8 @@ public class FileServiceImpl extends BaseNeo4jfsService implements FileService {
     private final StorageManager storageManager;
 
     private final static Logger logger = LoggerFactory.getLogger(FileServiceImpl.class);
+
+    private final static Set<StandardOpenOption> READ_ONLY_OPTIONS = Set.of(StandardOpenOption.READ);
 
     public FileServiceImpl(FileEntryRepository repository,
                            DirectoryService directoryService,
@@ -87,7 +91,9 @@ public class FileServiceImpl extends BaseNeo4jfsService implements FileService {
     }
 
     public InputStream getInputStream(URI uri) throws IOException {
+        checkUri(uri);
         FileEntry fe = prologueExistingFile(uri, false);
+        repository.updateLastAccessed(uri, fe, FileEntry.class);
         return storageManager.getFileInputStream(uri, fe.getStorageId());
     }
 
@@ -102,6 +108,28 @@ public class FileServiceImpl extends BaseNeo4jfsService implements FileService {
 
         return os;
     }
+
+    /**
+     * Create new seekable byte channel for NeofJfs file
+     * @param uri fully-qualified Neo4Jfs URI for file
+     * @param options set of open options
+     * @param attrs attributes for file
+     * @return seekable byte channel
+     * @throws IOException if I/O problem occurred
+     */
+    public SeekableByteChannel newByteChannel(URI uri, Set<? extends OpenOption> options, FileAttribute<?>... attrs) throws IOException {
+
+        //  Load, verify, normalize flags.
+        OpenOptionFlags flags = new OpenOptionFlags(options);
+
+        if (flags.write) {
+            return newByteChannelWrite(uri, flags, attrs);
+        } else {
+            return newByteChannelReadOnly(uri, flags, attrs);
+        }
+    }
+
+
 
     /**
      * Does the actual work of creating a file.  Other than how the file is created via Storage Manager, the
@@ -151,9 +179,13 @@ public class FileServiceImpl extends BaseNeo4jfsService implements FileService {
             throw new IOException("Unable to delete file entry %s.".formatted(file.getName()));
         }
 
-        //  Not ideal if physical file can't be deleted from storage manager but, as far as file system knows,
-        //  the file is gone and inaccessible once the node is deleted.  Probably need a util to clean up orphans
-        storageManager.deleteFile(uri, file.getStorageId());
+        try {
+            //  Not ideal if physical file can't be deleted from storage manager but, as far as file system knows,
+            //  the file is gone and inaccessible once the node is deleted.  Probably need a util to clean up orphans
+            storageManager.deleteFile(uri, file.getStorageId());
+        } catch (IOException e) {
+            logger.info("{}: unable to delete file {} from storage manager: {}", file.getName(), file.getStorageId(), e.getMessage());
+        }
     }
 
     /**
@@ -184,6 +216,72 @@ public class FileServiceImpl extends BaseNeo4jfsService implements FileService {
         } else {
             throw new NoSuchFileException(uri.toString());
         }
+    }
+
+    /**
+     * Register a deleteFile() call that is executed upon closing the byte channel.
+     * @param channel the channel on which to register the callback.
+     * @param uri Neo4Jfs URI for the file to delete.
+     */
+    private void registerDeleteCallback(CallbackSeekableByteChannel channel, URI uri) {
+        channel.registerCallback(() -> {
+            try {
+                delete(uri);
+            } catch (IOException e) {
+                logger.error("Unable to delete file {} on close: {}", uri, e.getMessage());
+            }
+        });
+    }
+
+    private SeekableByteChannel newByteChannelReadOnly(URI uri,
+                                                       OpenOptionFlags flags,
+                                                       FileAttribute<?>... attrs) throws IOException {
+
+        // File must already exist for read-only access.
+        FileEntry f = prologueExistingFile(uri, false);
+
+        //  Storage Manager creates the channel
+        SeekableByteChannel channel = storageManager.getSeekableByteChannel(uri, f.getStorageId(), READ_ONLY_OPTIONS);
+
+        //  Read-only file can be deleted on close, in which case we need to delete file entry as well.
+        if (flags.deleteOnClose) {
+            channel = new CallbackSeekableByteChannel(storageManager.getSeekableByteChannel(uri, f.getStorageId(), READ_ONLY_OPTIONS));
+            registerDeleteCallback((CallbackSeekableByteChannel) channel, uri);
+            return channel;
+        }
+
+        return channel;
+    }
+
+    private SeekableByteChannel newByteChannelWrite(URI uri,
+                                                    OpenOptionFlags flags,
+                                                    FileAttribute<?>... attrs) throws IOException {
+
+        FileEntry f = null;
+        if (flags.createNew) {
+            //  {@StandardOpenOption#CREATE_NEW} means that file cannot already exist.
+            try {
+                //  Attempt to retrieve file and throw exception if it already exists.
+                f = prologueExistingFile(uri, false);
+                throw new FileAlreadyExistsException(uri.toString());
+            } catch (IOException ioe) {
+                //  Success, file doesn't already exist so create new, empty one.
+                f = createWork(uri, null);
+            }
+        } else {
+            //  File may exist or could be created, based on the flag.
+            f = prologueExistingFile(uri, flags.create);
+        }
+
+        //  Callback on close always required for writeable files, either to delete the file on close or to update size.
+        CallbackSeekableByteChannel channel = new CallbackSeekableByteChannel(storageManager.getSeekableByteChannel(uri, f.getStorageId(), flags.toSet()));
+        if (flags.deleteOnClose) {
+            registerDeleteCallback(channel, uri);
+        } else {
+            channel.registerCallback(() -> updateSize(uri));
+        }
+
+        return channel;
     }
 
     /**
@@ -218,5 +316,117 @@ public class FileServiceImpl extends BaseNeo4jfsService implements FileService {
     @PostConstruct
     private void init() {
         directoryService.registerFileService(this);
+    }
+
+    /**
+     * Helper class for managing/checking {@code OpenOption} provided.
+     */
+    protected class OpenOptionFlags {
+
+        //  Flag per each {@code StandardOpenOption} value
+        boolean append = false;
+        boolean create = false;
+        boolean createNew = false;
+        boolean deleteOnClose = false;
+        boolean dsync = false;
+        boolean read = false;
+        boolean sparse = false;
+        boolean sync = false;
+        boolean truncateExisting = false;
+        boolean write = false;
+
+        /**
+         * Constructor take options and assign flags accordingly.
+         * @param options set of open options
+         */
+        OpenOptionFlags(Set<? extends OpenOption> options) {
+
+            //  Iterate over set expecting only StandardOpenOption values.
+            options.forEach(o -> {
+                if (o instanceof StandardOpenOption so) {
+                    switch (so) {
+                        case APPEND:
+                            append = true;
+                            break;
+                        case CREATE:
+                            create = true;
+                            break;
+                        case CREATE_NEW:
+                            createNew = true;
+                            break;
+                        case DELETE_ON_CLOSE:
+                            deleteOnClose = true;
+                            break;
+                        case DSYNC:
+                            dsync = true;
+                            break;
+                        case READ:
+                            read = true;
+                            break;
+                        case SPARSE:
+                            sparse = true;
+                            break;
+                        case SYNC:
+                            sync = true;
+                            break;
+                        case TRUNCATE_EXISTING:
+                            truncateExisting = true;
+                            break;
+                        case WRITE:
+                            write = true;
+                            break;
+                    }
+                } else {
+                    //  All {@code OpenOptions} are invalid.
+                    throw new IllegalArgumentException("Unsupported open option: %s".formatted(o));
+                }
+            });
+
+            //  Make sure flags are valid.
+            validateNormalizeFlags();
+        }
+
+        /**
+         * Return set of OpenOption based on flags, skipping those not applicable to Neo4Jfs:
+         * -CREATE and CREATE_NEW: Neo4Jfs file prerequisite for creating channel, therefore file exists in storage manager
+         * -SPARSE only applies when file created (assuming storage is local disk) and doesn't apply here as well
+         * @return
+         */
+        Set<OpenOption> toSet() {
+            Set<OpenOption> set = new HashSet<>();
+            if (append) set.add(StandardOpenOption.APPEND);
+            if (dsync) set.add(StandardOpenOption.DSYNC);
+            if (read) set.add(StandardOpenOption.READ);
+            if (sync) set.add(StandardOpenOption.SYNC);
+            if (truncateExisting) set.add(StandardOpenOption.TRUNCATE_EXISTING);
+            if (write) set.add(StandardOpenOption.WRITE);
+            return set;
+        }
+
+        /**
+         * Check OpenOption flags for correctness, consistency.
+         * Based on <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/nio/file/Files.html#newByteChannel(java.nio.file.Path,java.util.Set,java.nio.file.attribute.FileAttribute...)"</a>
+         */
+        private void validateNormalizeFlags() {
+            //  READ and APPEND not allowed together.
+            if (read && append) {
+                throw new IllegalArgumentException("READ + APPEND not allowed.");
+            }
+
+            //  APPEND and TRUNCATE_EXISTING not allowed togeether.
+            if (append && truncateExisting) {
+                throw new IllegalArgumentException("APPEND + TRUNCATE_EXISTING not allowed.");
+            }
+
+            // When neither read or write explicitly stated, default to read.
+            if (!read && !write && !append) {
+                read = true;
+            }
+
+            //  CREATE ignored when CREATE_NEW is specified.
+            if (create && createNew) {
+                create = false;
+            }
+        }
     }
 }

@@ -22,14 +22,35 @@ import java.util.List;
 
 public class Neo4jfsTreeWalker implements Closeable {
 
+    /**
+     * No more work possible when tree walked closed.
+     */
     private boolean closed = false;
+
+    /**
+     * The maximum directory depth visited.
+     */
     private final int maxDepth;
+
+    /**
+     * directory database repository
+     */
     private final DirectoryEntryRepository repository;
+
+    /**
+     * Directories added to stack when entering subdirectory; removed when leaving subdirectory.  Basically
+     * tracks state of where we are in the tree.
+     */
     private final ArrayDeque<Neo4jfsWalkerData> stack = new ArrayDeque<>();
 
+    /**
+     * Returned when tree walk has completed.
+     */
     private static final NeofjfsWalkerEvent EVENT_FINISHED = new NeofjfsWalkerEvent(EventType.FINISHED, null, null, null, null);
 
-    //  Maximum number of children entries to retrieve from Neo4J for each directory.
+    /**
+     * Pagination: number of children entries retrieved from Neo4J for each query.
+     */
     private static final int LIMIT_CHILDREN_PER_CALL = 500;
 
     /**
@@ -78,6 +99,12 @@ public class Neo4jfsTreeWalker implements Closeable {
         private final Iterator<DirectoryEntry> subdirs;
         private int skipped;
 
+        /**
+         * Constructor
+         * @param uri Neo4Jfs file system URI
+         * @param dir starting directory for walking the trees
+         * @param skipped
+         */
         public Neo4jfsWalkerData(URI uri, DirectoryEntry dir, int skipped) {
             this.uri = uri;
             this.dir = dir;
@@ -89,6 +116,7 @@ public class Neo4jfsTreeWalker implements Closeable {
 
     /**
      * Constructor.
+     *
      * @param maxDepth  The maximum directory depth visited.
      * @param repository used to query Neo4J for nodes to walk
      */
@@ -112,6 +140,7 @@ public class Neo4jfsTreeWalker implements Closeable {
 
     /**
      * Begin walking the tree
+     *
      * @param uri starting point in tree
      * @return event for first starting node encountered
      */
@@ -157,6 +186,7 @@ public class Neo4jfsTreeWalker implements Closeable {
 
     /**
      * Continue walking the tree
+     *
      * @param env event returned by initial walk() or most recent event returned by next().
      * @return next event in tree walk.
      */
@@ -176,6 +206,7 @@ public class Neo4jfsTreeWalker implements Closeable {
 
     /**
      * Return the node/entry for the starting point for walking the tree.
+     *
      * @param uri URI of an entry in the tree
      * @return the node.
      */
@@ -291,6 +322,7 @@ public class Neo4jfsTreeWalker implements Closeable {
 
     /**
      * Visit the next available file in the current directory.
+     *
      * @param current current directory being walked
      * @return FILE event or null if no more files to process.
      */
@@ -334,6 +366,7 @@ public class Neo4jfsTreeWalker implements Closeable {
 
     /**
      * Visit the next available subdirectory of the current directory
+     *
      * @param current current directory being walked
      * @return START_DIRECTORY event or null if no more subdirectories to process.
      */
@@ -373,6 +406,7 @@ public class Neo4jfsTreeWalker implements Closeable {
 
     /**
      * Correctly build a URI, accounting for starting at root where concatenating separator not needed.
+     *
      * @param current current URI
      * @param childName name of the subdirectory or file in directory.
      * @return new URI with the subdirectory.
