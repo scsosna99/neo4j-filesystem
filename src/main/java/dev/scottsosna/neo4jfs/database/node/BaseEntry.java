@@ -14,19 +14,52 @@ import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.attribute.FileTime;
 import java.time.Instant;
 
-@NodeEntity( label = "Base")
+/**
+ * Basic information required of all Neo4Jfs entries (files, directories, etc.)
+ */
 @Getter @Setter @NoArgsConstructor
 public class BaseEntry implements BasicFileAttributes, BasicFileAttributeView {
 
+    /**
+     * Neo4J node identifier, auto-generated UUID.
+     */
     @Id
     @GeneratedValue(strategy = UuidStrategy.class)
     String id;
+
+    /**
+     * Name of the entry
+     */
     String name;
+
+    /**
+     * Username of creator, owner of the entry.
+     */
     String userName;
+
+    /**
+     * Name of group associated with this entry, usually for security reasons.
+     */
     String groupName;
+
+    /**
+     * Date/time when entity was created.
+     */
     Instant created;
+
+    /**
+     * Date/time when entity was last modified.
+     */
     Instant lastModified;
+
+    /**
+     * Date/time when entity was last accessed.
+     */
     Instant lastAccessed;
+
+    /**
+     * Flag: is entry considered "hidden" when listing/walking directory contents?
+     */
     boolean hidden;
 
     /** ----------------------------------------------------------------------------
