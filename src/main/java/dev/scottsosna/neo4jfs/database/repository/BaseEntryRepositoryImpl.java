@@ -17,8 +17,6 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.StreamSupport;
 
-import static dev.scottsosna.neo4jfs.config.Neo4jfsConstants.NEO4JFS_URI_SCHEME;
-
 /**
  * Database functionality shared amongst all entry types.
  */

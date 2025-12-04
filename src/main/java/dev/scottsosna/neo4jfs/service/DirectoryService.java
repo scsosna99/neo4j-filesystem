@@ -9,7 +9,6 @@ import java.net.URI;
 import java.nio.file.CopyOption;
 import java.nio.file.FileVisitor;
 import java.nio.file.LinkOption;
-import java.nio.file.Path;
 import java.nio.file.attribute.BasicFileAttributeView;
 import java.util.List;
 

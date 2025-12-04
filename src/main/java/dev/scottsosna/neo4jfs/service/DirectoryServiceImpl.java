@@ -9,7 +9,6 @@ import dev.scottsosna.neo4jfs.database.repository.util.DirectoryDeleteFileVisito
 import dev.scottsosna.neo4jfs.database.repository.util.Neo4jfsFileAttributes;
 import dev.scottsosna.neo4jfs.database.repository.util.Neo4jfsTreeWalker;
 import dev.scottsosna.neo4jfs.exception.Neo4jfsUnknownEntryException;
-import org.apache.logging.log4j.CloseableThreadContext;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;

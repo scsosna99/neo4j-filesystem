@@ -2,7 +2,6 @@ package dev.scottsosna.neo4jfs.database.model.neo4j;
 
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import lombok.Setter;
 
 import java.util.Map;
 
