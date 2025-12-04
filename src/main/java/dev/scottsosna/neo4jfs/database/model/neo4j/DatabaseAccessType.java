@@ -12,12 +12,30 @@ public enum DatabaseAccessType {
     READ_ONLY("read-only"),
     READ_WRITE("read-write");
 
+    /**
+     * Access value returned by Neo4J.
+     */
     private final String access;
 
+    //  Map of status values to enum values used to convert what Neo4J into actual enum
+    /**
+     * Maps access values to enum values, used to convert what Neo4J returns int enum.
+     */
+    static final Map<String,DatabaseAccessType> neo4jValueMap;
+
+
+    /**
+     * Constructor
+     * @param access Neo4J access value for this enum
+     */
     DatabaseAccessType(String access) {
         this.access = access;
     }
 
+    /**
+     * Getter
+     * @return Neo4J access value
+     */
     public String getAccess() {
         return access;
     }
@@ -36,8 +54,9 @@ public enum DatabaseAccessType {
         }
     }
 
-    //  Map of status values to enum values used to convert what Neo4J into actual enum
-    static final Map<String,DatabaseAccessType> neo4jValueMap;
+    /**
+     * Loads static map of access values to enum values.
+     */
     static {
         neo4jValueMap = Arrays.stream(values())
             .collect(Collectors.toMap(DatabaseAccessType::getAccess, e -> e));

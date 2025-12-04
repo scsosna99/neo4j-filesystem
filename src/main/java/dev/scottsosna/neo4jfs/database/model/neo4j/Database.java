@@ -6,8 +6,67 @@ import lombok.Setter;
 
 import java.util.Map;
 
-@Getter @Setter @NoArgsConstructor
+/**
+ * Neo4J Database model holding the values returned by "SHOW DATABASE" command.
+ */
+@Getter @NoArgsConstructor
 public class Database {
+
+    /**
+     * Database is either read-write or read-only.
+     */
+    private DatabaseAccessType access;
+
+    /**
+     * Host name and port where database can be found.
+     */
+    private String address;
+
+    /**
+     * Database role - primary, secondary, unknown - usually primary
+     */
+    private String role;
+
+    /**
+     * Enum defines the valid statuses, only online is useful.
+     */
+    private DatabaseStatusType currentStatus;
+
+    /**
+     * Type of database: system, standard, composite
+     */
+    private DatabaseType type;
+
+    /**
+     * When available, explains why database is not in correct state.
+     */
+    private String statusMessage;
+
+    /**
+     * Enum defines status that may be requested for a database.
+     */
+    private DatabaseStatusType requestedStatus;
+
+    /**
+     * When true, home database for the current users
+     */
+    private Boolean home;
+
+    /**
+     * When true, this database is the default database for the current user.
+     * Attribute is different name than in Neo4J because "default" is a reserved word in Java.
+     */
+    private Boolean defaultDatabase;
+
+    /**
+     * database name
+     */
+    private String name;
+
+    /**
+     * true for standalong instance or for instance in cluster accepting writes for this database
+     */
+    private Boolean writer;
 
     /**
      * Constructor that deserializes the results returned from a "SHOW DATABASE" query.  As this is
@@ -27,17 +86,4 @@ public class Database {
         this.name = results.get(DatabaseColumnNames.NAME).toString();
         this.writer = Boolean.parseBoolean(results.get(DatabaseColumnNames.WRITER).toString());
     }
-
-    private DatabaseAccessType access;
-    private String address;
-    private String role;
-    private DatabaseStatusType currentStatus;
-    private DatabaseType type;
-    private String statusMessage;
-    private DatabaseStatusType requestedStatus;
-    private Boolean home;
-    //  NOTE: it's "default" in Neo4J which is reserved in Java
-    private Boolean defaultDatabase;
-    private String name;
-    private Boolean writer;
 }

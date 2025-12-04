@@ -20,11 +20,29 @@ public enum DatabaseStatusType {
     QUARANTINED("quarantined"),
     UNKNOWN("unknown");
 
+    /**
+     * Value returned by Neo4J
+     */
     private final String statusValue;
+
+    //  Map of status values to enum values used to convert what Neo4J into actual enum
+    /**
+     * Maps Neo4J status values to enum, used when converted what was returned by Neo4J.
+     */
+    static final Map<String,DatabaseStatusType> neo4jValueMap;
+
+    /**
+     * Constructor
+     * @param statusValue Neo4J status value for this enum
+     */
     DatabaseStatusType(String statusValue) {
         this.statusValue = statusValue;
     }
 
+    /**
+     * Getter
+     * @return Neop4J status value
+     */
     public String getStatusValue() {
         return statusValue;
     }
@@ -43,8 +61,9 @@ public enum DatabaseStatusType {
         }
     }
 
-    //  Map of status values to enum values used to convert what Neo4J into actual enum
-    static final Map<String,DatabaseStatusType> neo4jValueMap;
+    /**
+     * Loads static map of status values to enum values.
+     */
     static {
         neo4jValueMap = Arrays.stream(values())
             .collect(Collectors.toMap(DatabaseStatusType::getStatusValue, e -> e));

@@ -13,11 +13,28 @@ public enum DatabaseType {
     STANDARD("standard"),
     COMPOSITE("composite");
 
+    /**
+     * Database type value as returned by Neo4J.
+     */
     private final String type;
+
+    /**
+     * Maps Neo4J type values to enum, used when converting what was returned by Neo4J.
+     */
+    static final Map<String,DatabaseType> neo4jValueMap;
+
+    /**
+     * Constructor
+     * @param type Neo4J type value for the enum.
+     */
     DatabaseType(String type) {
         this.type = type;
     }
 
+    /**
+     * Getter
+     * @return Neo4J type value for this enum.
+     */
     public String getType() {
         return type;
     }
@@ -36,11 +53,11 @@ public enum DatabaseType {
         }
     }
 
-    //  Map of status values to enum values used to convert what Neo4J into actual enum
-    static final Map<String,DatabaseType> neo4jValueMap;
+    /**
+     * Loads static map of type values to enum values.
+     */
     static {
         neo4jValueMap = Arrays.stream(values()).
             collect(Collectors.toMap(DatabaseType::getType, e -> e));
     }
-
 }
