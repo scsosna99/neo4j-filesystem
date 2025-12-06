@@ -23,20 +23,20 @@ public interface StorageManager {
      * A specific Neo4Jfs partition (instance) is being deleted, delete all files in partition
      * @param fsUri base Neo4Jfs URI
      */
-    void dropPartition(URI fsUri) throws IOException;
+    void dropPartition(final URI fsUri) throws IOException;
 
     /**
      * Initializes partition for the file system specified by URI.
      * @param fsUri base Neo4Jfs URI
      */
-    void initPartition(URI fsUri) throws IOException;
+    void initPartition(final URI fsUri) throws IOException;
 
     /**
      * Get the FileStore as supported by the Storage Manager implementation.
      * @param fsUri base Neo4Jfs URI
      * @return FileStore for the partition.
      */
-    FileStore getPartitionFileStore(URI fsUri) throws IOException;
+    FileStore getPartitionFileStore(final URI fsUri) throws IOException;
 
     /**
      * Copy existing file already managed by StorageManager, most likely due to file system copy.
@@ -45,7 +45,7 @@ public interface StorageManager {
      * @return details for new file, including storage id (relative path) and size
      * @throws IOException file was unabled to be copied.
      */
-    StorageFileInfo copyFile(URI fsUri, String storageId) throws IOException;
+    StorageFileInfo copyFile(final URI fsUri, final String storageId) throws IOException;
 
     /**
      * Creates empty Neo4Jfs file to be managed by Storage Manager
@@ -53,7 +53,7 @@ public interface StorageManager {
      * @return file details, including storage id (relative path)
      * @throws IOException unable to create file
      */
-    StorageFileInfo createFile(URI uri) throws IOException;
+    StorageFileInfo createFile(final URI uri) throws IOException;
 
     /**
      * Create new Neo4Jfs file to be managed by Storage Manager.
@@ -62,14 +62,14 @@ public interface StorageManager {
      * @return file details, including storage id (relative path) and size
      * @throws IOException unable to create/persist file
      */
-    StorageFileInfo createFile(URI uri, InputStream is) throws IOException;
+    StorageFileInfo createFile(final URI uri, final InputStream is) throws IOException;
 
     /**
      * Delete file from storage manager, most likely because file deleted from Neo4Jfs filesystem.
      * @param fsUri base Neo4Jfs URI
      * @param storageId the storage-specific identifier, in this case a relative path.
      */
-    void deleteFile(URI fsUri, String storageId) throws IOException;
+    void deleteFile(final URI fsUri, final String storageId) throws IOException;
 
     /**
      * Provide details about file managed by Storage Manager, based on storage id.
@@ -77,7 +77,7 @@ public interface StorageManager {
      * @param storageId implementation-specific identifier for the file
      * @return file details, such as size.
      */
-    StorageFileInfo getFileInfo(URI fsUri, String storageId) throws IOException;
+    StorageFileInfo getFileInfo(final URI fsUri, final String storageId) throws IOException;
 
     /**
      * Create input stream to allow file to be read
@@ -86,7 +86,7 @@ public interface StorageManager {
      * @return InputStream for reading data from file
      * @throws IOException thrown when file doesn't exist or is inaccessible.
      */
-    InputStream getFileInputStream(URI fsUri, String storageId) throws IOException;
+    InputStream getFileInputStream(final URI fsUri, final String storageId) throws IOException;
 
     /**
      * Create output stream to allow file to be written to.
@@ -95,7 +95,7 @@ public interface StorageManager {
      * @return OutputStream for writing data to file
      * @throws IOException file doesn't exist, isn't accessible, isn't writeable
      */
-    OutputStream getFileOutputStream(URI uri, String storageId) throws IOException;
+    OutputStream getFileOutputStream(final URI uri, final String storageId) throws IOException;
 
     /**
      *
@@ -105,7 +105,9 @@ public interface StorageManager {
      * @return {@code SeekableByteChannel} based on options passed in
      * @throws IOException error occurred opening file.
      */
-    SeekableByteChannel getSeekableByteChannel(URI fsUri, String storageId,  Set<? extends OpenOption> options) throws IOException;
+    SeekableByteChannel getSeekableByteChannel(final URI fsUri,
+                                               final String storageId,
+                                               final Set<? extends OpenOption> options) throws IOException;
 
     /**
      * Updates an existing file in Neo4Jfs.
@@ -116,5 +118,7 @@ public interface StorageManager {
      * @param is from where data is streamed
      * @return details for updated file, including storage id (relative path) and size
      */
-    StorageFileInfo updateFile(URI uri, String storageId, InputStream is) throws IOException;
+    StorageFileInfo updateFile(final URI uri,
+                               final String storageId,
+                               final InputStream is) throws IOException;
 }

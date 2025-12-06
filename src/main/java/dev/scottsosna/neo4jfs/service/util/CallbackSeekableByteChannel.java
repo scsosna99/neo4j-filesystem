@@ -1,4 +1,4 @@
-package dev.scottsosna.neo4jfs.storage.util;
+package dev.scottsosna.neo4jfs.service.util;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;

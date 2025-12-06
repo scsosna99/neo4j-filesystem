@@ -5,16 +5,20 @@ import dev.scottsosna.neo4jfs.database.model.neo4j.DatabaseAccessType;
 import dev.scottsosna.neo4jfs.database.model.neo4j.DatabaseStatusType;
 import dev.scottsosna.neo4jfs.database.model.neo4j.DatabaseType;
 import dev.scottsosna.neo4jfs.database.repository.DatabaseRepository;
+import dev.scottsosna.neo4jfs.database.repository.util.DebuggingFileVisitor;
 import dev.scottsosna.neo4jfs.exception.Neo4jfsDatabaseException;
 import dev.scottsosna.neo4jfs.storage.StorageManager;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+import org.springframework.util.FileSystemUtils;
 
 import java.io.IOException;
 import java.net.URI;
 import java.nio.file.*;
 import java.util.Map;
 
+@Slf4j
 @Service
 public class FileSystemServiceImpl extends BaseNeo4jfsService implements FileSystemService {
 
@@ -95,8 +99,6 @@ public class FileSystemServiceImpl extends BaseNeo4jfsService implements FileSys
     @Scheduled(initialDelay = 2000L)
     public void test() {
         try {
-            var dir = Files.newDirectoryStream(Path.of("/Users/scsosna/data/src")).iterator();
-            System.out.println(dir);
             try (FileSystem fs = FileSystems.newFileSystem(URI.create("neo4jfs://scsosna99/"), Map.of())) {
 //                Files.getFileStore(Path.of(new URI("neo4jfs://scsosna99")));
                 Files.createDirectory(fs.getPath("/scs1"));
@@ -112,20 +114,30 @@ public class FileSystemServiceImpl extends BaseNeo4jfsService implements FileSys
                 fileService.create(new URI("neo4jfs://scsosna99/def/myThirdFile"), Path.of("/Users/scsosna/data/music/manu/viva_la_colifata/1_02_Sabias_Palabras.mp3"));
                 fileService.create(new URI("neo4jfs://scsosna99/def/myFourthFile"), Path.of("/Users/scsosna/data/music/manu/viva_la_colifata/1_02_Sabias_Palabras.mp3"));
                 fileService.delete(new URI("neo4jfs://scsosna99/def/myFourthFile"));
-//                directoryService.dumpTree(new URI("neo4jfs://scsosna99/"));
+
+                directoryService.mkdir(new URI("neo4jfs://scsosna99/def/hij/test0"));
+                directoryService.mkdir(new URI("neo4jfs://scsosna99/def/hij/test1"));
+                directoryService.mkdir(new URI("neo4jfs://scsosna99/def/hij/test2"));
+                directoryService.mkdir(new URI("neo4jfs://scsosna99/def/hij/test3"));
+                directoryService.mkdir(new URI("neo4jfs://scsosna99/def/hij/test4"));
+                directoryService.mkdir(new URI("neo4jfs://scsosna99/def/hij/test5"));
+                directoryService.mkdir(new URI("neo4jfs://scsosna99/def/hij/test6"));
+                directoryService.mkdir(new URI("neo4jfs://scsosna99/def/hij/test7"));
+                directoryService.mkdir(new URI("neo4jfs://scsosna99/def/hij/test8"));
+                directoryService.mkdir(new URI("neo4jfs://scsosna99/def/hij/test9"));
+                fileService.create(new URI("neo4jfs://scsosna99/def/hij/myFirstFile"), Path.of("/Users/scsosna/data/music/manu/viva_la_colifata/1_02_Sabias_Palabras.mp3"));
+                fileService.create(new URI("neo4jfs://scsosna99/def/hij/test9//myFirstFile"), Path.of("/Users/scsosna/data/music/manu/viva_la_colifata/1_02_Sabias_Palabras.mp3"));
+
+                Files.newDirectoryStream(fs.getPath("/def/hij")).forEach(System.out::println);
+                FileSystemUtils.copyRecursively(fs.getPath("/def"), fs.getPath("/scs1"));
+
+
+                //                directoryService.dumpTree(new URI("neo4jfs://scsosna99/"));
                 Files.copy(Path.of("/Users/scsosna/data/music/manu/siberie_metait_conte/14_Siberie_Fleuve_Amour.mp3"), fs.getPath("/abc/random.mp3"));
-                var map = Files.readAttributes(fs.getPath("/abc/random.mp3"), "basic:creationTime,size,lastModifiedTime", LinkOption.NOFOLLOW_LINKS);
-                System.out.println(map);
-                Files.setAttribute(fs.getPath("/abc"), "basic:lastModifiedTime", 234456L);
-//                Files.copy(Path.of("/Users/scsosna/data/music/manu/viva_la_colifata/1_02_Sabias_Palabras.mp3"), fs.getPath("/abc/random.mp3"));
-
-
-//                Files.createDirectories(fs.getPath("/scs1/scs2/scs3"));
-//                Files.delete(fs.getPath("/abc/myFirstFile"));
-//                Files.deleteIfExists(fs.getPath("/abc/myFirstFile"));
-
-                //  Renaming file/directory in place.
-//                Files.move(fs.getPath("/abc"), fs.getPath("/abc"));
+                Files.move(fs.getPath("/myRootFile"), fs.getPath("/def/mySecondFile"), StandardCopyOption.REPLACE_EXISTING);
+//                directoryService.dumpTree(new URI("neo4jfs://scsosna99/"));
+//                Files.walkFileTree(Path.of("/Users/scsosna/data/src/github/neo4jfs/build"), 1, null);
+//                FileSystemUtils.copyRecursively(fs.getPath("/def"), fs.getPath("/abc"));
 //                Files.move(fs.getPath("/abc"), fs.getPath("/xyz"));
 //                Files.move(fs.getPath("/myRootFile"), fs.getPath("/myRootFile"));
 //                Files.move(fs.getPath("/myRootFile"), fs.getPath("/myRootFileRenamed"));
@@ -133,12 +145,6 @@ public class FileSystemServiceImpl extends BaseNeo4jfsService implements FileSys
 //                Files.move(fs.getPath("/def/hij"), fs.getPath("/def/mySecondFile"), StandardCopyOption.REPLACE_EXISTING);
 //                Files.move(fs.getPath("/def/myThirdFile"), fs.getPath("/def/klm"), StandardCopyOption.REPLACE_EXISTING);
 
-                //  Moving file/directory
-                Files.move(fs.getPath("/def/mySecondFile"), fs.getPath("/abc"));
-                Files.move(fs.getPath("/def/myThirdFile"), fs.getPath("/abc/movedThirdFile"));
-                Files.move(fs.getPath("/abc"), fs.getPath("/scs1/abc"));
-                Files.move(fs.getPath("/scs1/abc/myThirdFile"), fs.getPath("/myRootFile"), StandardCopyOption.REPLACE_EXISTING);
-                Files.move(fs.getPath("/scs1/abc"), fs.getPath("/def/hij"), StandardCopyOption.REPLACE_EXISTING);
 
 
 //            directoryService.mkdir(new URI("neo4jfs://scsosna98/abc/def"));

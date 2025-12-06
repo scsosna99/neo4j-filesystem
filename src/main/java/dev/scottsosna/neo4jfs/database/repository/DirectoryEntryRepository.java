@@ -13,9 +13,12 @@ public interface DirectoryEntryRepository extends BaseEntryRepository {
     DirectoryEntry create(URI uri, String name);
     boolean pathExists(URI uri);
     DirectoryEntry getParentWithChildren(URI uri, String parentId, int skip, int limit);
+    DirectoryEntry getSubdirs(final URI fsUri, final String parentId, final int skip, final int limit);
     DirectoryEntry findRoot(URI uri);
-    List<BaseEntry> find(URI uri, Path path);
     List<BaseEntry> find(URI uri);
+    List<BaseEntry> find(URI uri, Path path);
+    List<BaseEntry> find(URI uri, Path path, boolean endNodeOptional);
+    List<BaseEntry> findFile(URI uri, Path path, boolean endNodeOptional);
     BaseEntry parent(URI uri);
     boolean delete(URI uri, String fileNodeId);
     DirectoryEntry save(URI uri, DirectoryEntry d);

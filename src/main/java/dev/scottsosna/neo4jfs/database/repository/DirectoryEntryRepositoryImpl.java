@@ -5,6 +5,9 @@ import dev.scottsosna.neo4jfs.config.Neo4jfsConstants;
 import dev.scottsosna.neo4jfs.database.node.BaseEntry;
 import dev.scottsosna.neo4jfs.database.node.DirectoryBuilder;
 import dev.scottsosna.neo4jfs.database.node.DirectoryEntry;
+import dev.scottsosna.neo4jfs.database.repository.util.AddCypherClauseConsumer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 import java.net.URI;
@@ -20,9 +23,12 @@ public class DirectoryEntryRepositoryImpl extends BaseEntryRepositoryImpl implem
     private static final String MATCH_ROOT = "(r:Directory {name: '/', root:true})";
     private static final String MATCH_DIRECTORY = "(d%d:Directory {name: $name%d, root: $root%d})";
     private static final String QUERY_CHILDREN_PAGINATED = "MATCH (p:Directory {id: $id})-[r*0..]->(c) RETURN p, r, c SKIP $skip LIMIT $limit";
+    private static final String QUERY_SUBDIRS_PAGINATED = "MATCH (p:Directory {id: $id})-[r:PARENT_OF*0..]->(c: Directory) RETURN p, r, c SKIP $skip LIMIT $limit";
     private static final String RELATIONSHIP_PARENT_OF = "-[:PARENT_OF]->";
     private static final String RELATIONSHIP_CONTAINS = "-[:CONTAINS]->";
     private static final Map<String,Object> MATCH_ROOT_PARAMS = Map.of("name0", Neo4jfsConstants.NAME_ROOT_DIRECTORY, "root0", Boolean.TRUE);
+
+    private static final Logger logger = LoggerFactory.getLogger(DirectoryEntryRepositoryImpl.class);
 
     public DirectoryEntryRepositoryImpl(Neo4jfsConfiguration config) {
         super(config);
@@ -68,15 +74,34 @@ public class DirectoryEntryRepositoryImpl extends BaseEntryRepositoryImpl implem
     }
 
     public List<BaseEntry> find(URI uri, Path path) {
-        return queryPath(uri, path);
+        return find(uri, path, false);
     }
 
     public List<BaseEntry> find(URI uri) {
-        return queryPath(uri);
+        return find(uri, Path.of(uri), false);
     }
 
-    public DirectoryEntry getParentWithChildren(URI uri, String parentId, int skip, int limit) {
+    public List<BaseEntry> find(URI uri, Path path, boolean entryOptional) {
+        return queryPath(uri, path, (entryOptional) ? this::addMatchEntryOptional : this::addMatchEntry);
+    }
+
+    public List<BaseEntry> findFile(URI uri, Path path, boolean endNodeOptional) {
+        return queryPath(uri, path, (endNodeOptional) ? this::addMatchFileOptional : this::addMatchFile);
+    }
+
+    public DirectoryEntry getParentWithChildren(URI uri,
+                                                String parentId,
+                                                int skip,
+                                                int limit) {
         List<DirectoryEntry> results = query(uri, QUERY_CHILDREN_PAGINATED, Map.of("id", parentId, "skip", skip + 1, "limit", limit), DirectoryEntry.class);
+        return results.isEmpty() ? null : results.getFirst();
+    }
+
+    public DirectoryEntry getSubdirs(final URI fsUri,
+                                     final String parentId,
+                                     final int skip,
+                                     final int limit) {
+        List<DirectoryEntry> results = query(fsUri, QUERY_SUBDIRS_PAGINATED, Map.of("id", parentId, "skip", skip + 1, "limit", limit), DirectoryEntry.class);
         return results.isEmpty() ? null : results.getFirst();
     }
 
@@ -89,10 +114,21 @@ public class DirectoryEntryRepositoryImpl extends BaseEntryRepositoryImpl implem
     }
 
     private List<BaseEntry> queryPath(URI uri) {
-        return queryPath(uri, Path.of(uri));
+        return queryPath(uri, Path.of(uri), this::addMatchEntry);
     }
 
+    private List<BaseEntry> queryPath(URI uri, AddCypherClauseConsumer lastClause) {
+        return queryPath(uri, Path.of(uri), lastClause);
+    }
+
+
     private List<BaseEntry> queryPath(URI uri, Path path) {
+        return queryPath(uri, path, this::addMatchEntry);
+    }
+
+    private List<BaseEntry> queryPath(URI uri,
+                                      Path path,
+                                      AddCypherClauseConsumer lastClause) {
 
         //  Break the URI's path into its constituent parts.
         List<String> paths = StreamSupport.stream(path.spliterator(), false).map(Path::toString).toList();
@@ -111,10 +147,11 @@ public class DirectoryEntryRepositoryImpl extends BaseEntryRepositoryImpl implem
         for (int i = 1; i < paths.size(); i++) {
             addMatchDirectory(sbMatch, sbReturn, params, paths.get(i - 1), false, i);
         }
-        addMatchEntry(sbMatch, sbReturn, params, paths.getLast(), paths.size());
+        lastClause.apply(sbMatch, sbReturn, params, paths.getLast(), paths.size());
 
         //  Concatenate and query the whole thing
-        return query(uri, sbMatch.toString() + sbReturn.toString(), params, BaseEntry.class);
+        logger.debug("Path query: {}{}", sbMatch, sbReturn);
+        return query(uri, sbMatch + sbReturn.toString(), params, BaseEntry.class);
     }
 
     private BaseEntry queryLeaf(URI uri, Path path) {

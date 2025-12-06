@@ -8,7 +8,7 @@ import java.io.IOException;
 import java.net.URI;
 
 @RestController
-@RequestMapping( value = "neo4jfs/api/filesystem")
+@RequestMapping( value = "/neo4jfs/api/filesystem")
 public class FileSystemController {
 
     private FileSystemService service;

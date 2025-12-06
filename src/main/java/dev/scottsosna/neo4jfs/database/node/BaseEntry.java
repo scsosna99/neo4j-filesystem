@@ -1,5 +1,6 @@
 package dev.scottsosna.neo4jfs.database.node;
 
+import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -16,7 +17,7 @@ import java.time.Instant;
 /**
  * Basic information required of all Neo4Jfs entries (files, directories, etc.)
  */
-@Getter @Setter @NoArgsConstructor
+@Getter @Setter @NoArgsConstructor @EqualsAndHashCode
 public class BaseEntry implements BasicFileAttributes, BasicFileAttributeView {
 
     /**

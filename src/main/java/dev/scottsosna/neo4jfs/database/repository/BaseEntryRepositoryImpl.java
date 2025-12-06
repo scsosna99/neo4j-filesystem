@@ -8,6 +8,8 @@ import org.neo4j.ogm.config.Configuration;
 import org.neo4j.ogm.model.Result;
 import org.neo4j.ogm.session.Session;
 import org.neo4j.ogm.session.SessionFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Async;
 
 import java.net.URI;
@@ -47,11 +49,16 @@ public class BaseEntryRepositoryImpl {
      * Various Cypher queries or chunks used for building complete query.
      */
     private static final String MATCH_ENTRY = "(d%d {name: $name%d})";
+    private static final String MATCH_FILE = "(d%d:File {name: $name%d})";
     private static final String QUERY_DIRECTORY_AND_CHILD = "MATCH (p:Directory {id: $id})-[]->(c {name: $name}) RETURN p,c";
     private static final String QUERY_DELETE_NODE = "MATCH (n {id: $id}) DETACH DELETE n";
     private static final String QUERY_DELETE_RELATIONSHIP = "MATCH (start {id: $startId})-[r]-(end {id: $endId}) DELETE r";
-    private static final String RELATIONSHIP_LINK = "-[]->";
+    private static final String RELATIONSHIP_ENTRY = "-[]->";
+    private static final String RELATIONSHIP_ENTRY_OPTIONAL = "OPTIONAL MATCH (d%d)-[]->";
+    private static final String RELATIONSHIP_LINK_FILE = "-[:CONTAINS]->";
+    private static final String RELATIONSHIP_LINK_FILE_OPTIONAL = "OPTIONAL MATCH (d%d)-[:CONTAINS]->";
 
+    private static final Logger logger = LoggerFactory.getLogger(BaseEntryRepositoryImpl.class);
 
     /**
      * Constructor
@@ -245,9 +252,78 @@ public class BaseEntryRepositoryImpl {
                                  Map<String,Object> queryParams,
                                  String entryName,
                                  int index) {
+        addMatchWork(sbMatch, sbReturn, queryParams, entryName, index, RELATIONSHIP_ENTRY, MATCH_ENTRY);
+    }
+
+    /**
+     * Extends Cypher query to navigate from a directory to any entry, such as a sub-directory or contained file
+     * @param sbMatch builder for query
+     * @param sbReturn builder for return clause
+     * @param queryParams map of parameters to pass to Cypher query
+     * @param entryName entry name to match
+     * @param index depth of navigation, used for parameter names and return
+     */
+    protected void addMatchEntryOptional(StringBuilder sbMatch,
+                                         StringBuilder sbReturn,
+                                         Map<String,Object> queryParams,
+                                         String entryName,
+                                         int index) {
+        addMatchWork(sbMatch, sbReturn, queryParams, entryName, index, RELATIONSHIP_ENTRY_OPTIONAL, MATCH_ENTRY);
+    }
+
+    /**
+     * Extends Cypher query to navigate from a directory to any entry which may or may not exists.
+     * @param sbMatch builder for query
+     * @param sbReturn builder for return clause
+     * @param queryParams map of parameters to pass to Cypher query
+     * @param entryName entry name to match
+     * @param index depth of navigation, used for parameter names and return
+     */
+    protected void addMatchFile(StringBuilder sbMatch,
+                                StringBuilder sbReturn,
+                                Map<String,Object> queryParams,
+                                String entryName,
+                                int index) {
+        addMatchWork(sbMatch, sbReturn, queryParams, entryName, index, RELATIONSHIP_LINK_FILE, MATCH_FILE);
+    }
+
+    /**
+     * Extends Cypher query to navigate from a directory to a file which may or may not exists.
+     * @param sbMatch builder for query
+     * @param sbReturn builder for return clause
+     * @param queryParams map of parameters to pass to Cypher query
+     * @param entryName entry name to match
+     * @param index depth of navigation, used for parameter names and return
+     */
+    protected void addMatchFileOptional(StringBuilder sbMatch,
+                                        StringBuilder sbReturn,
+                                        Map<String,Object> queryParams,
+                                        String entryName,
+                                        int index) {
+        addMatchWork(sbMatch, sbReturn, queryParams, entryName, index, RELATIONSHIP_LINK_FILE_OPTIONAL, MATCH_FILE);
+    }
+
+    /**
+     * Extends Cypher query to navigate from a directory to a file which may or may not exists.
+     * @param sbMatch builder for query
+     * @param sbReturn builder for return clause
+     * @param queryParams map of parameters to pass to Cypher query
+     * @param entryName entry name to match
+     * @param index depth of navigation, used for parameter names and return
+     * @param relationship Neo4J Cypher string for the relationship
+     * @param endNode Neo4J Cypher string for the ending node
+     */
+    private void addMatchWork(StringBuilder sbMatch,
+                              StringBuilder sbReturn,
+                              Map<String,Object> queryParams,
+                              String entryName,
+                              int index,
+                              String relationship,
+                              String endNode) {
         sbMatch
-            .append(RELATIONSHIP_LINK)
-            .append(MATCH_ENTRY.formatted(index, index));
+            //  needed for 'OPTIONAL MATCH' but not run of the mill so sometimes fomatting does nothing, looks weird
+            .append(relationship.formatted(index - 1))
+            .append(endNode.formatted(index, index));
         queryParams.put("name" + index, entryName);
         if (sbReturn != null) sbReturn.append(", d").append(index);
     }

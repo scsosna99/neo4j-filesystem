@@ -8,6 +8,7 @@ import dev.scottsosna.neo4jfs.database.repository.DirectoryEntryRepository;
 import dev.scottsosna.neo4jfs.exception.Neo4jfsException;
 import dev.scottsosna.neo4jfs.exception.Neo4jfsUnknownEntryException;
 import dev.scottsosna.neo4jfs.service.DirectoryService;
+import dev.scottsosna.neo4jfs.util.SpringContext;
 import lombok.Getter;
 
 import java.io.Closeable;
@@ -118,16 +119,14 @@ public class Neo4jfsTreeWalker implements Closeable {
      * Constructor.
      *
      * @param maxDepth  The maximum directory depth visited.
-     * @param repository used to query Neo4J for nodes to walk
      */
-    public Neo4jfsTreeWalker(final int maxDepth,
-                             final DirectoryEntryRepository repository) {
+    public Neo4jfsTreeWalker(final int maxDepth) {
         if (maxDepth < 0)
             throw new IllegalArgumentException("'maxDepth' is negative");
 
         this.closed = false;
         this.maxDepth = maxDepth;
-        this.repository = repository;
+        this.repository = SpringContext.getBean(DirectoryEntryRepository.class);
     }
 
     /**
@@ -135,7 +134,7 @@ public class Neo4jfsTreeWalker implements Closeable {
      * @param repository used to query Neo4J for nodes to walk
      */
     public Neo4jfsTreeWalker(final DirectoryEntryRepository repository) {
-        this(Integer.MAX_VALUE, repository);
+        this(Integer.MAX_VALUE);
     }
 
     /**

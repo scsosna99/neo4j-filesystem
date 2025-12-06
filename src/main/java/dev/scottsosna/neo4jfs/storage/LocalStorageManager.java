@@ -4,7 +4,7 @@ import dev.scottsosna.neo4jfs.config.Neo4jfsConstants;
 import dev.scottsosna.neo4jfs.database.model.storage.StorageFileInfo;
 import dev.scottsosna.neo4jfs.exception.Neo4jfsNoSuchPartition;
 import dev.scottsosna.neo4jfs.service.util.LocalStorageTreeDeleteVisitor;
-import dev.scottsosna.neo4jfs.storage.util.CallbackOutputStream;
+import dev.scottsosna.neo4jfs.service.util.CallbackOutputStream;
 import dev.scottsosna.neo4jfs.storage.util.LocalStorageFileStore;
 import jakarta.annotation.PostConstruct;
 import org.slf4j.Logger;
@@ -51,7 +51,7 @@ public class LocalStorageManager implements StorageManager {
      * Initializes partition for the file system specified by URI.
      * @param fsUri base Neo4Jfs URI
      */
-    public void initPartition(URI fsUri) throws IOException {
+    public void initPartition(final URI fsUri) throws IOException {
         File partition = Path.of(neo4jfsBasePath, determinePartition(fsUri)).toFile();
         if (!partition.exists()) {
             partition.mkdirs();
@@ -65,7 +65,7 @@ public class LocalStorageManager implements StorageManager {
      * A specific Neo4Jfs partition (instance) is being deleted, delete all files in partition
      * @param fsUri base Neo4Jfs URI
      */
-    public void dropPartition(URI fsUri) throws IOException {
+    public void dropPartition(final URI fsUri) throws IOException {
         Path partition = Path.of(neo4jfsBasePath, determinePartition(fsUri));
         Files.walkFileTree(partition, treeDeleteVisitor);
     }
@@ -77,7 +77,7 @@ public class LocalStorageManager implements StorageManager {
      * @return FileStore for the partition.
      * @throws IOException partition directory does not exist.
      */
-    public FileStore getPartitionFileStore(URI fsUri) throws IOException {
+    public FileStore getPartitionFileStore(final URI fsUri) throws IOException {
         String partitionName = determinePartition(fsUri);
         Path partitionPath = Path.of(neo4jfsBasePath, partitionName);
         if (partitionPath.toFile().exists()) {
@@ -95,7 +95,7 @@ public class LocalStorageManager implements StorageManager {
      * @throws IOException unable to create file
      */
     @Override
-    public StorageFileInfo createFile(URI uri) throws IOException {
+    public StorageFileInfo createFile(final URI uri) throws IOException {
         Path relativePath = generateRelativePath(uri);
         Path completePath = generateCompletePath(uri, relativePath);
         verifySubdirectory(completePath);
@@ -112,7 +112,7 @@ public class LocalStorageManager implements StorageManager {
      * @throws IOException unable to create/persist file
      */
     @Override
-    public StorageFileInfo createFile(URI uri, InputStream is) throws IOException {
+    public StorageFileInfo createFile(final URI uri, final InputStream is) throws IOException {
         //  Create path, verify/create subdirectory.
         Path relativePath = generateRelativePath(uri);
         Path completePath = generateCompletePath(uri, relativePath);
@@ -136,7 +136,9 @@ public class LocalStorageManager implements StorageManager {
      * @return details for updated file, including storage id (relative path) and size
      */
     @Override
-    public StorageFileInfo updateFile(URI uri, String storageId, InputStream is) throws IOException {
+    public StorageFileInfo updateFile(final URI uri,
+                                      final String storageId,
+                                      final InputStream is) throws IOException {
 
         //  Save the new file
         StorageFileInfo info = createFile(uri, is);
@@ -157,7 +159,7 @@ public class LocalStorageManager implements StorageManager {
      * @return details for new file, including storage id (relative path) and size
      * @throws IOException file was unabled to be copied.
      */
-    public StorageFileInfo copyFile(URI fsUri, String storageId) throws IOException{
+    public StorageFileInfo copyFile(final URI fsUri, final String storageId) throws IOException{
 
         //  Create path for source (existing) and target (new) files.
         Path source = generateCompletePath(fsUri, Path.of(storageId));
@@ -177,7 +179,7 @@ public class LocalStorageManager implements StorageManager {
      * @return file details, such as size.
      */
     @Override
-    public StorageFileInfo getFileInfo(URI fsUri, String storageId) throws IOException {
+    public StorageFileInfo getFileInfo(final URI fsUri, final String storageId) throws IOException {
         File file = generateCompletePath(fsUri, Path.of(storageId)).toFile();
         return new StorageFileInfo(storageId, file.length());
     }
@@ -191,7 +193,7 @@ public class LocalStorageManager implements StorageManager {
      * @throws IOException file doesn't exist, isn't accessible, isn't writeable
      */
     @Override
-    public OutputStream getFileOutputStream(URI uri, String storageId) throws IOException {
+    public OutputStream getFileOutputStream(final URI uri, final String storageId) throws IOException {
         return new CallbackOutputStream(Files.newOutputStream(generateCompletePath(uri, Path.of(storageId))));
     }
 
@@ -204,7 +206,9 @@ public class LocalStorageManager implements StorageManager {
      * @return {@code SeekableByteChannel} based on options passed in
      * @throws IOException error occurred opening file.
      */
-    public SeekableByteChannel getSeekableByteChannel(URI fsUri, String storageId, Set<? extends OpenOption> options) throws IOException {
+    public SeekableByteChannel getSeekableByteChannel(final URI fsUri,
+                                                      final String storageId,
+                                                      final Set<? extends OpenOption> options) throws IOException {
         return Files.newByteChannel(generateCompletePath(fsUri, Path.of(storageId)), options);
     }
 
@@ -218,7 +222,7 @@ public class LocalStorageManager implements StorageManager {
      * @throws IOException thrown when file doesn't exist or is inaccessible.
      */
     @Override
-    public InputStream getFileInputStream(URI uri, String storageId) throws IOException {
+    public InputStream getFileInputStream(final URI uri, final String storageId) throws IOException {
         return Files.newInputStream(generateCompletePath(uri, Path.of(storageId)));
     }
 
@@ -229,7 +233,7 @@ public class LocalStorageManager implements StorageManager {
      * @param storageId the storage-specific identifier, in this case a relative path.
      */
     @Override
-    public void deleteFile(URI fsUri, String storageId) throws IOException {
+    public void deleteFile(final URI fsUri, final String storageId) throws IOException {
         Files.deleteIfExists(generateCompletePath(fsUri, Path.of(storageId)));
     }
 
