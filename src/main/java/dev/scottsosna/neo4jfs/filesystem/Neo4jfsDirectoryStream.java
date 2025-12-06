@@ -14,6 +14,8 @@ import java.nio.file.Path;
 import java.util.Iterator;
 import java.util.List;
 
+import static java.util.Collections.emptyIterator;
+
 /**
  * DirectoryStream implementation for Neo4J as defined by {@code java.nio.files.spi.FileSystemProvider}
  */
@@ -84,7 +86,7 @@ public class Neo4jfsDirectoryStream implements DirectoryStream<Path>, AutoClosea
     private void queryForSubdirs() {
         if (!exhausted) {
             this.d = service.findSubdirs(uri, d.getId(), skippedCount, SUBDIRS_PER_CALL);
-            this.exhausted = d == null || (d.getSubdirs().size() < SUBDIRS_PER_CALL);
+            this.exhausted = this.d.getSubdirs() == null || this.d.getSubdirs().size() < SUBDIRS_PER_CALL;
             skippedCount += SUBDIRS_PER_CALL;
         }
     }
@@ -124,7 +126,7 @@ public class Neo4jfsDirectoryStream implements DirectoryStream<Path>, AutoClosea
          */
         Neo4jfsDirectoryIterator(Neo4jfsDirectoryStream ds) {
             this.ds = ds;
-            subdirIterator = ds.d.getSubdirs().iterator();
+            subdirIterator = ds.d.getSubdirs() != null ? ds.d.getSubdirs().iterator() : emptyIterator();
         }
 
         /**
@@ -160,7 +162,7 @@ public class Neo4jfsDirectoryStream implements DirectoryStream<Path>, AutoClosea
          */
         @Override
         public Path next() {
-            return Path.of(uri.resolve(subdirIterator.next().getName()));
+            return Path.of(URI.create("%s/%s".formatted(ds.uri, subdirIterator.next().getName())));
         }
 
         /**

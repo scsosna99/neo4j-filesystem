@@ -261,6 +261,7 @@ public class DirectoryServiceImpl extends BaseNeo4jfsService implements Director
      */
     public BasicFileAttributeView readAttributeView(URI uri, LinkOption... options) throws IOException {
         checkUri(uri);
+        System.out.println("readAttributeView: %s".formatted(uri));
         return find(uri).getLast();
     }
 

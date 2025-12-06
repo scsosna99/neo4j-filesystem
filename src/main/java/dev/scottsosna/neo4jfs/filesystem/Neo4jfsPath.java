@@ -32,6 +32,17 @@ public class Neo4jfsPath implements Path {
      * @param fs Neo4Jfs file system for this path.
      * @param path The detailed path within the file system.
      */
+    public Neo4jfsPath(FileSystem fs, Path path) {
+        this.fs = (Neo4jFileSystem) fs;
+        this.pathString = path.toString();
+        this.path = path;
+    }
+
+    /**
+     * Constructor
+     * @param fs Neo4Jfs file system for this path.
+     * @param path The detailed path within the file system.
+     */
     public Neo4jfsPath(FileSystem fs, String path) {
         this.fs = (Neo4jFileSystem) fs;
         this.pathString = path;
@@ -156,7 +167,12 @@ public class Neo4jfsPath implements Path {
      */
     @Override
     public Path resolve(Path other) {
-        return new Neo4jfsPath(fs, path.resolve(other).toString());
+        switch (other) {
+            case Neo4jfsPath npath:
+                return new Neo4jfsPath(fs, path.resolve(npath.path));
+            default:
+                return path.resolve(other);
+        }
     }
 
     /**
@@ -166,7 +182,12 @@ public class Neo4jfsPath implements Path {
      */
     @Override
     public Path relativize(Path other) {
-        return null;
+        switch (other) {
+            case Neo4jfsPath npath:
+                return new Neo4jfsPath(fs, path.relativize(npath.path));
+            default:
+                return path.relativize(other);
+        }
     }
 
     /**

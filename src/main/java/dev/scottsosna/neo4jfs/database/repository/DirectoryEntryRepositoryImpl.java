@@ -23,7 +23,7 @@ public class DirectoryEntryRepositoryImpl extends BaseEntryRepositoryImpl implem
     private static final String MATCH_ROOT = "(r:Directory {name: '/', root:true})";
     private static final String MATCH_DIRECTORY = "(d%d:Directory {name: $name%d, root: $root%d})";
     private static final String QUERY_CHILDREN_PAGINATED = "MATCH (p:Directory {id: $id})-[r*0..]->(c) RETURN p, r, c SKIP $skip LIMIT $limit";
-    private static final String QUERY_SUBDIRS_PAGINATED = "MATCH (p:Directory {id: $id})-[r:PARENT_OF*0..]->(c: Directory) RETURN p, r, c SKIP $skip LIMIT $limit";
+    private static final String QUERY_SUBDIRS_PAGINATED = "MATCH (p:Directory {id: $id}) OPTIONAL MATCH(o)-[r:PARENT_OF]->(c: Directory) RETURN p, r, c SKIP $skip LIMIT $limit";
     private static final String RELATIONSHIP_PARENT_OF = "-[:PARENT_OF]->";
     private static final String RELATIONSHIP_CONTAINS = "-[:CONTAINS]->";
     private static final Map<String,Object> MATCH_ROOT_PARAMS = Map.of("name0", Neo4jfsConstants.NAME_ROOT_DIRECTORY, "root0", Boolean.TRUE);
