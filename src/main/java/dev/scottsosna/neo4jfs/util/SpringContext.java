@@ -17,7 +17,7 @@ public class SpringContext implements ApplicationContextAware {
      * @param beanClass bean class to retrieve from context
      * @return Spring bean or null if not found
      */
-    public static <T extends Object> T getBean(Class<T> beanClass) {
+    public static <T extends Object> T getBean(final Class<T> beanClass) {
         return context.getBean(beanClass);
     }
 
@@ -26,7 +26,7 @@ public class SpringContext implements ApplicationContextAware {
      * @param applicationContext the ApplicationContext object to be used by this object
      */
     @Override
-    public void setApplicationContext(ApplicationContext applicationContext) {
+    public void setApplicationContext(final ApplicationContext applicationContext) {
         SpringContext.context = applicationContext;
     }
 }
