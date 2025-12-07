@@ -21,6 +21,8 @@ import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 
+import static dev.scottsosna.neo4jfs.config.Neo4jfsConstants.NEO4JFS_PROPERTY_PAGINATION_SIZE;
+
 public class Neo4jfsTreeWalker implements Closeable {
 
     /**
@@ -52,7 +54,7 @@ public class Neo4jfsTreeWalker implements Closeable {
     /**
      * Pagination: number of children entries retrieved from Neo4J for each query.
      */
-    private static final int LIMIT_CHILDREN_PER_CALL = 500;
+    private final int paginationMaxPerCall;
 
     /**
      * Event types are essentially the states achieved when walking the tree.
@@ -127,6 +129,7 @@ public class Neo4jfsTreeWalker implements Closeable {
         this.closed = false;
         this.maxDepth = maxDepth;
         this.repository = SpringContext.getBean(DirectoryEntryRepository.class);
+        this.paginationMaxPerCall = SpringContext.getConfigurationProperty(NEO4JFS_PROPERTY_PAGINATION_SIZE);
     }
 
     /**
@@ -162,14 +165,14 @@ public class Neo4jfsTreeWalker implements Closeable {
             case DirectoryEntry d:
                 //  The node returned by getStartingEntry() does not return directories files or subdirectories, so
                 //  retrieve them separately.  The results are paginated to prevent problems with large file systems.
-                DirectoryEntry withChildren = repository.getParentWithChildren(uri, d.getId(), 0, LIMIT_CHILDREN_PER_CALL);
+                DirectoryEntry withChildren = repository.getParentWithChildren(uri, d.getId(), 0, paginationMaxPerCall);
                 if (withChildren == null) {
                     //  Current directory has no subdirs or files so substitute the starting node so walk can continue.
                     withChildren = d;
                 }
 
                 //  Push data for current directory onto stack to track where we are/what we're doing.
-                stack.push(new Neo4jfsWalkerData(uri, withChildren, LIMIT_CHILDREN_PER_CALL));
+                stack.push(new Neo4jfsWalkerData(uri, withChildren, paginationMaxPerCall));
 
                 //  Initial event when walk starts with directory is START_DIRECTORY.
                 return new NeofjfsWalkerEvent(EventType.ENTER_DIRECTORY, withChildren, null, uri, null);
@@ -346,7 +349,7 @@ public class Neo4jfsTreeWalker implements Closeable {
         //  Both iterators exhausted may simply mean that current page of children objects are exhausted and more are
         //  available.  Attempt to retrieve more.
         if (!current.files.hasNext() && !current.subdirs.hasNext()) {
-            DirectoryEntry withChildren = repository.getParentWithChildren(current.uri, current.dir.getId(), current.skipped, LIMIT_CHILDREN_PER_CALL);
+            DirectoryEntry withChildren = repository.getParentWithChildren(current.uri, current.dir.getId(), current.skipped, paginationMaxPerCall);
 
             //  It's possible - likely with anything but an extremely large file system - that the directory has no
             //  additional files, subdirs, etc. to process in which case we'll simply drop out farther down.
@@ -354,7 +357,7 @@ public class Neo4jfsTreeWalker implements Closeable {
                 (withChildren.getFiles() != null && !withChildren.getFiles().isEmpty()) ||
                     (withChildren.getSubdirs() != null && !withChildren.getSubdirs().isEmpty()))) {
                 stack.pop();
-                Neo4jfsWalkerData reloaded = new Neo4jfsWalkerData(current.uri, withChildren, current.skipped + LIMIT_CHILDREN_PER_CALL);
+                Neo4jfsWalkerData reloaded = new Neo4jfsWalkerData(current.uri, withChildren, current.skipped + paginationMaxPerCall);
                 stack.push(reloaded);
                 return reloaded;
             }
@@ -382,13 +385,13 @@ public class Neo4jfsTreeWalker implements Closeable {
             //  Entry retrieve _should_ be a directory, but just in case...
             if (subdirEntry instanceof DirectoryEntry d) {
                 //  Re-retrieve node, this time gettings its children as well.
-                DirectoryEntry subdirAndChildren = repository.getParentWithChildren(uri, d.getId(), 0, LIMIT_CHILDREN_PER_CALL);
+                DirectoryEntry subdirAndChildren = repository.getParentWithChildren(uri, d.getId(), 0, paginationMaxPerCall);
                 if (subdirAndChildren == null) {
                     subdirAndChildren = d;
                 }
 
                 //  Push subdir onto stack.
-                stack.push(new Neo4jfsWalkerData(uri, subdirAndChildren, LIMIT_CHILDREN_PER_CALL));
+                stack.push(new Neo4jfsWalkerData(uri, subdirAndChildren, paginationMaxPerCall));
 
                 //  Return event for starting a new directory.
                 URI eventUri = buildWithChild(current.uri, subdirEntry.getName());

@@ -1,6 +1,8 @@
 package dev.scottsosna.neo4jfs.service;
 
 import java.net.URI;
+import java.nio.file.CopyOption;
+import java.util.Arrays;
 
 import static dev.scottsosna.neo4jfs.config.Neo4jfsConstants.NEO4JFS_URI_SCHEME;
 
@@ -33,4 +35,16 @@ public class BaseNeo4jfsService {
         //  Normalize URI in case anyone doing tricky navigation.
         return uri.normalize();
     }
+
+    /**
+     * Checked for requested copy option in options passed to initial call
+     * @param requested the copy option requested
+     * @param options variable list of options
+     * @return true if found, false otherwise
+     */
+    protected boolean checkForCopyOption(CopyOption requested, CopyOption[] options) {
+        return options != null && Arrays.stream(options).anyMatch(requested::equals);
+    }
+
+
 }

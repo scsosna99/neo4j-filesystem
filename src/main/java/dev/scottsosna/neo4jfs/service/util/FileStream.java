@@ -1,16 +1,14 @@
-package dev.scottsosna.neo4jfs.filesystem;
+package dev.scottsosna.neo4jfs.service.util;
 
-import dev.scottsosna.neo4jfs.database.node.BaseEntry;
 import dev.scottsosna.neo4jfs.database.node.DirectoryEntry;
+import dev.scottsosna.neo4jfs.database.node.FileEntry;
 import dev.scottsosna.neo4jfs.service.DirectoryService;
 import dev.scottsosna.neo4jfs.util.SpringContext;
 
+import java.io.Closeable;
 import java.io.IOException;
 import java.net.URI;
-import java.nio.file.DirectoryStream;
-import java.nio.file.NoSuchFileException;
-import java.nio.file.NotDirectoryException;
-import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
@@ -20,7 +18,7 @@ import static java.util.Collections.emptyIterator;
 /**
  * DirectoryStream implementation for Neo4J as defined by {@code java.nio.files.spi.FileSystemProvider}
  */
-public class Neo4jfsDirectoryStream implements DirectoryStream<Path>, AutoCloseable {
+public class FileStream implements Iterable<FileEntry>, Closeable, AutoCloseable {
 
     /**
      * No more work accomplished once the directory stream is closed.
@@ -33,7 +31,7 @@ public class Neo4jfsDirectoryStream implements DirectoryStream<Path>, AutoClosea
     private boolean exhausted = false;
 
     /**
-     * Directory for which subdirectories are being enumerated/streamed.
+     * Directory for which files are being enumerated/streamed.
      */
     private final DirectoryEntry d;
 
@@ -42,7 +40,7 @@ public class Neo4jfsDirectoryStream implements DirectoryStream<Path>, AutoClosea
      */
     private final DirectoryService service;
 
-    private List<DirectoryEntry> subdirs = List.of();
+    private List<FileEntry> files = List.of();
 
     /**
      * Pagination: tracks how many directories returned during previous queries that are skipped.
@@ -52,45 +50,27 @@ public class Neo4jfsDirectoryStream implements DirectoryStream<Path>, AutoClosea
     /**
      * Neo4Jfs URI for current directory.
      */
-    private final URI uri;
+    private final URI fsUri;
 
     /**
      * Pagination: number of children entries retrieved from Neo4J for each query.
      */
-    private fina; int paginationMaxPerCall;
+    private final int paginationMaxPerCall;
 
-    /**
-     * Constructor
-     * @param path for which DirectoryStream is created
-     */
-    public Neo4jfsDirectoryStream(final Path path) throws IOException {
+    public FileStream(final URI fsUri, final DirectoryEntry d) throws IOException {
+        this.fsUri = fsUri;
+        this.d = d;
         this.service = SpringContext.getBean(DirectoryService.class);
         this.paginationMaxPerCall = SpringContext.getConfigurationProperty(NEO4JFS_PROPERTY_PAGINATION_SIZE);
-
-        //  Make sure the path exists.
-        this.uri = path.toUri();
-        List<BaseEntry> pathParts = service.find(path.toUri());
-        if (pathParts == null || pathParts.isEmpty()) {
-            throw new NoSuchFileException("%s: no such file or directory".formatted(path));
-        }
-
-        //  Make sure the path represents a directory.
-        BaseEntry last = pathParts.getLast();
-        if (last instanceof DirectoryEntry d) {
-            this.d = d;
-            queryForSubdirs();
-        } else {
-            throw new NotDirectoryException("%s: not a directory".formatted(path));
-        }
     }
 
     /**
-     *  Retrieve page worth of subdirectories from Neo4J.
+     *  Retrieve page worth of files from Neo4J.
      */
-    private void queryForSubdirs() {
+    private void queryForFiles() {
         if (!exhausted) {
-            this.subdirs = service.findSubdirs(uri, d.getId(), skippedCount, paginationMaxPerCall);
-            this.exhausted = this.subdirs == null || this.subdirs.size() < paginationMaxPerCall;
+            this.files = service.findFiles(fsUri, d.getId(), skippedCount, paginationMaxPerCall);
+            this.exhausted = this.files == null || this.files.size() < paginationMaxPerCall;
             skippedCount += paginationMaxPerCall;
         }
     }
@@ -99,8 +79,8 @@ public class Neo4jfsDirectoryStream implements DirectoryStream<Path>, AutoClosea
      * @return Directory stream for Neo4Jfs directory.
      */
     @Override
-    public Iterator<Path> iterator() {
-        return new Neo4jfsDirectoryIterator(this);
+    public Iterator<FileEntry> iterator() {
+        return new FileIterator(this);
     }
 
     @Override
@@ -110,27 +90,27 @@ public class Neo4jfsDirectoryStream implements DirectoryStream<Path>, AutoClosea
     }
 
     /**
-     * Internal class which iterates through subdirectories.
+     * Internal class which iterates through files.
      */
-    private class Neo4jfsDirectoryIterator implements Iterator<Path> {
+    private class FileIterator implements Iterator<FileEntry> {
 
         /**
-         * Owning directory stream knows how to retrieve additional subdirectories for iterator.
+         * Owning file stream knows how to retrieve additional files for iterator.
          */
-        private final Neo4jfsDirectoryStream ds;
+        private final FileStream ds;
 
         /**
          * Internal iterator for subdirectories.
          */
-        private Iterator<DirectoryEntry> subdirIterator;
+        private Iterator<FileEntry> fileIterator;
 
         /**
          * Constructor
          * @param ds owning Neo4jfsDirectoryStream
          */
-        Neo4jfsDirectoryIterator(Neo4jfsDirectoryStream ds) {
+        FileIterator(FileStream ds) {
             this.ds = ds;
-            subdirIterator = ds.d.getSubdirs() != null ? ds.d.getSubdirs().iterator() : emptyIterator();
+            fileIterator = ds.d.getFiles() != null ? ds.d.getFiles().iterator() : emptyIterator();
         }
 
         /**
@@ -144,17 +124,16 @@ public class Neo4jfsDirectoryStream implements DirectoryStream<Path>, AutoClosea
             if (ds.closed) return false;
 
             //  Happy path: current iterator of subdirs has not been exhausted.
-            if (subdirIterator.hasNext()) return true;
+            if (fileIterator.hasNext()) return true;
 
             //  Iterator exhausted, any reason to believe another query will return more?
             if (exhausted) return false;
 
             //  Possibly more, query and attempt to reload internal iterator.
-            ds.queryForSubdirs();
-            if (ds.d != null && ds.d.getSubdirs() != null && !ds.d.getSubdirs().isEmpty()) {
-                //  More found, create new internal iterator.
-                subdirIterator = ds.d.getSubdirs().iterator();
-                return subdirIterator.hasNext();
+            ds.queryForFiles();
+            if (ds.files != null && !ds.files.isEmpty()) {
+                fileIterator = ds.files.iterator();
+                return fileIterator.hasNext();
             }
 
             //  no more subdirectories found so sayonara.
@@ -162,11 +141,11 @@ public class Neo4jfsDirectoryStream implements DirectoryStream<Path>, AutoClosea
         }
 
         /**
-         * @return path of next subdirectory
+         * @return entry for next file
          */
         @Override
-        public Path next() {
-            return Path.of(URI.create("%s/%s".formatted(ds.uri, subdirIterator.next().getName())));
+        public FileEntry next() {
+            return fileIterator.next();
         }
 
         /**

@@ -30,7 +30,8 @@ public interface DirectoryService {
     DirectoryEntry findOrCreateRoot(URI uri);
     BaseEntry parent(URI uri);
     DirectoryEntry findChildren(URI uri, String parentId, int skip, int limit);
-    DirectoryEntry findSubdirs(final URI uri, final String parentId, final int skip, final int limit);
+    List<FileEntry> findFiles(URI uri, String parentId, int skip, int limit);
+    List<DirectoryEntry> findSubdirs(final URI uri, final String parentId, final int skip, final int limit);
 
     BasicFileAttributeView readAttributeView(URI uri, LinkOption... options) throws IOException;
     void setAttribute(URI uri, String viewName, String attribute, Object value, LinkOption... options) throws IOException;

@@ -5,6 +5,7 @@ import dev.scottsosna.neo4jfs.config.Neo4jfsConstants;
 import dev.scottsosna.neo4jfs.database.node.BaseEntry;
 import dev.scottsosna.neo4jfs.database.node.DirectoryBuilder;
 import dev.scottsosna.neo4jfs.database.node.DirectoryEntry;
+import dev.scottsosna.neo4jfs.database.node.FileEntry;
 import dev.scottsosna.neo4jfs.database.repository.util.AddCypherClauseConsumer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -23,7 +24,8 @@ public class DirectoryEntryRepositoryImpl extends BaseEntryRepositoryImpl implem
     private static final String MATCH_ROOT = "(r:Directory {name: '/', root:true})";
     private static final String MATCH_DIRECTORY = "(d%d:Directory {name: $name%d, root: $root%d})";
     private static final String QUERY_CHILDREN_PAGINATED = "MATCH (p:Directory {id: $id})-[r*0..]->(c) RETURN p, r, c SKIP $skip LIMIT $limit";
-    private static final String QUERY_SUBDIRS_PAGINATED = "MATCH (p:Directory {id: $id}) OPTIONAL MATCH(o)-[r:PARENT_OF]->(c: Directory) RETURN p, r, c SKIP $skip LIMIT $limit";
+    private static final String QUERY_SUBDIRS_PAGINATED = "MATCH (p:Directory {id: $id}) OPTIONAL MATCH(p)-[r:PARENT_OF]->(c:Directory) RETURN c SKIP $skip LIMIT $limit";
+    private static final String QUERY_FILES_PAGINATED = "MATCH (p:Directory {id: $id}) OPTIONAL MATCH(p)-[r:CONTAINS]->(c:File) RETURN c SKIP $skip LIMIT $limit";
     private static final String RELATIONSHIP_PARENT_OF = "-[:PARENT_OF]->";
     private static final String RELATIONSHIP_CONTAINS = "-[:CONTAINS]->";
     private static final Map<String,Object> MATCH_ROOT_PARAMS = Map.of("name0", Neo4jfsConstants.NAME_ROOT_DIRECTORY, "root0", Boolean.TRUE);
@@ -97,12 +99,20 @@ public class DirectoryEntryRepositoryImpl extends BaseEntryRepositoryImpl implem
         return results.isEmpty() ? null : results.getFirst();
     }
 
-    public DirectoryEntry getSubdirs(final URI fsUri,
-                                     final String parentId,
-                                     final int skip,
-                                     final int limit) {
+    public List<FileEntry> getFiles(final URI fsUri,
+                                   final String parentId,
+                                   final int skip,
+                                   final int limit) {
+        List<FileEntry> results = query(fsUri, QUERY_FILES_PAGINATED, Map.of("id", parentId, "skip", skip + 1, "limit", limit), FileEntry.class);
+        return results.isEmpty() ? List.of() : results;
+    }
+
+    public List<DirectoryEntry> getSubdirs(final URI fsUri,
+                                           final String parentId,
+                                           final int skip,
+                                           final int limit) {
         List<DirectoryEntry> results = query(fsUri, QUERY_SUBDIRS_PAGINATED, Map.of("id", parentId, "skip", skip + 1, "limit", limit), DirectoryEntry.class);
-        return results.isEmpty() ? null : results.getFirst();
+        return results.isEmpty() ? List.of() : results;
     }
 
     public BaseEntry parent(URI uri) {

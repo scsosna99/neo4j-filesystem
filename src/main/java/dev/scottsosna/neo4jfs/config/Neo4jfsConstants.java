@@ -25,6 +25,11 @@ public class Neo4jfsConstants {
     public static final String NEO4JFS_URI_SCHEME = "neo4jfs";
 
     /**
+     * Spring-configured properties that can be retrieved ny Spring context.
+     */
+    public static final String NEO4JFS_PROPERTY_PAGINATION_SIZE = "neo4jfs.pagination.size";
+
+    /**
      * Magical characters for specifying attributes in a string as defined by {@code java.nio.file.Files.readAttributes}
      */
     public static final String ATTRIBUTE_SEPARATOR = ",";

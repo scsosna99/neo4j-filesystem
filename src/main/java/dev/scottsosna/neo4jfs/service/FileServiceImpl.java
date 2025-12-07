@@ -5,9 +5,10 @@ import dev.scottsosna.neo4jfs.database.node.BaseEntry;
 import dev.scottsosna.neo4jfs.database.node.DirectoryEntry;
 import dev.scottsosna.neo4jfs.database.node.FileEntry;
 import dev.scottsosna.neo4jfs.database.repository.FileEntryRepository;
-import dev.scottsosna.neo4jfs.storage.StorageManager;
+import dev.scottsosna.neo4jfs.exception.Neo4jfsUnknownEntryException;
 import dev.scottsosna.neo4jfs.service.util.CallbackOutputStream;
 import dev.scottsosna.neo4jfs.service.util.CallbackSeekableByteChannel;
+import dev.scottsosna.neo4jfs.storage.StorageManager;
 import jakarta.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -35,9 +36,15 @@ public class FileServiceImpl extends BaseNeo4jfsService implements FileService {
 
     private final static Set<StandardOpenOption> READ_ONLY_OPTIONS = Set.of(StandardOpenOption.READ);
 
-    public FileServiceImpl(FileEntryRepository repository,
-                           DirectoryService directoryService,
-                           StorageManager storageManager) {
+    /**
+     * Constructor
+     * @param repository database component for files
+     * @param directoryService service for directories containing files
+     * @param storageManager physical storage of the files managed by Neo4Jfs
+     */
+    public FileServiceImpl(final FileEntryRepository repository,
+                           final DirectoryService directoryService,
+                           final StorageManager storageManager) {
         this.repository = repository;
         this.directoryService = directoryService;
         this.storageManager = storageManager;
@@ -48,7 +55,7 @@ public class FileServiceImpl extends BaseNeo4jfsService implements FileService {
      * @param uri Neo4Jfs file URI
      * @throws IOException for whatever reason, the file could not be created
      */
-    public void create (URI uri) throws IOException{
+    public void create (final URI uri) throws IOException{
         createWork(uri, null);
     }
 
@@ -58,7 +65,7 @@ public class FileServiceImpl extends BaseNeo4jfsService implements FileService {
      * @param is input stream for file contents
      * @throws IOException for whatever reason, the file could not be created
      */
-    public void create (URI uri, InputStream is) throws IOException {
+    public void create (final URI uri, final InputStream is) throws IOException {
         createWork(uri, is);
     }
 
@@ -68,11 +75,83 @@ public class FileServiceImpl extends BaseNeo4jfsService implements FileService {
      * @param sourceFile local file to persist
      * @throws IOException file cannot be created
      */
-    public void create (URI uri, Path sourceFile) throws IOException{
+    public void create (final URI uri, final Path sourceFile) throws IOException{
         create(uri, Files.newInputStream(sourceFile));
     }
 
-    public void delete(URI uri) throws IOException {
+    public void copy(URI sourceUri, URI targetUri, final CopyOption... options) throws IOException {
+        sourceUri = checkUri(sourceUri);
+        targetUri = checkUri(targetUri);
+
+        //  Verify source file exists.
+        FileEntry sourceFile = prologueExistingFile(sourceUri, false);
+
+        //  First check complete URI for existence.
+        List<BaseEntry> targetEntries = directoryService.find(targetUri);
+        DirectoryEntry targetDirectory = null;
+        if (!targetEntries.isEmpty()) {
+            //  Check whether URI was directory or file.
+            switch (targetEntries.getLast()) {
+                case FileEntry fe:
+                    targetDirectory = (DirectoryEntry) targetEntries.get(targetEntries.size() - 2);
+                    break;
+                case DirectoryEntry de:
+                    targetDirectory = de;
+                    break;
+                default:
+                    throw new Neo4jfsUnknownEntryException(targetEntries.getLast().getClass().getSimpleName());
+            }
+        } else {
+            //  Target URI not found, let's see if parent exists AND is a directory.
+            targetEntries = directoryService.find(Path.of(targetUri).getParent().toUri());
+            if (targetEntries.isEmpty()) {
+                //  Invalid target for copy.
+                throw new NoSuchFileException(targetUri.toString());
+            }
+
+            //  Parent MUST be a directory.
+            BaseEntry last = targetEntries.getLast();
+            if (!(last instanceof DirectoryEntry)) {
+                throw new NotDirectoryException(targetUri.toString());
+            }
+            targetDirectory = (DirectoryEntry) last;
+        }
+
+        //  Do the actual work.
+        copy (sourceFile, targetUri, targetDirectory, options);
+    }
+
+    public void copy(final FileEntry sourceFile,
+                     final URI targetUri,
+                     final DirectoryEntry targetDirectory,
+                     final CopyOption... options) throws IOException {
+
+        //  Is there already a file or subdir with the same name?
+        String fileName = Path.of(targetUri).getFileName().toString();
+        verifyNameUniqueness(targetUri, targetDirectory, fileName, checkForCopyOption(StandardCopyOption.REPLACE_EXISTING, options));
+
+        //  Copy physical file
+        StorageFileInfo info = storageManager.copyFile(targetUri, sourceFile.getStorageId());
+
+        //  When the target specified in URI is same as the name of the target directory into which the file us
+        //  being copied, the new file name is the same as the source file name.
+        if (fileName.equals(targetDirectory.getName())) {
+            fileName = sourceFile.getName();
+        }
+
+        //  Create/persist new file entry.
+        FileEntry f = repository.create(targetUri, fileName, info.getStorageId(), info.getSize());
+
+        //  Add to the parent directory.
+        directoryService.addFile(targetUri, targetDirectory, f);
+    }
+
+    /**
+     * Delete a file by URI
+     * @param uri Neo4Jfs file URI
+     * @throws IOException if I/O fails during delete.
+     */
+    public void delete(final URI uri) throws IOException {
         FileEntry fe = prologueExistingFile(uri, false);
         deleteWork(uri, fe);
     }
@@ -84,20 +163,20 @@ public class FileServiceImpl extends BaseNeo4jfsService implements FileService {
      * @throws IOException thrown when delete fails, most like StorageManager but could be for other reasons
      */
     @Override
-    public void delete(URI uri, String nodeId) throws IOException {
+    public void delete(final URI uri, final String nodeId) throws IOException {
         checkUri(uri);
         FileEntry file = repository.load(uri, nodeId);
         deleteWork(uri, file);
     }
 
-    public InputStream getInputStream(URI uri) throws IOException {
+    public InputStream getInputStream(final URI uri) throws IOException {
         checkUri(uri);
         FileEntry fe = prologueExistingFile(uri, false);
         repository.updateLastAccessed(uri, fe, FileEntry.class);
         return storageManager.getFileInputStream(uri, fe.getStorageId());
     }
 
-    public OutputStream getOutputStream(URI uri) throws IOException {
+    public OutputStream getOutputStream(final URI uri) throws IOException {
         FileEntry fe = prologueExistingFile(uri, true);
         OutputStream os = storageManager.getFileOutputStream(uri, fe.getStorageId());
 
@@ -117,7 +196,8 @@ public class FileServiceImpl extends BaseNeo4jfsService implements FileService {
      * @return seekable byte channel
      * @throws IOException if I/O problem occurred
      */
-    public SeekableByteChannel newByteChannel(URI uri, Set<? extends OpenOption> options, FileAttribute<?>... attrs) throws IOException {
+    public SeekableByteChannel newByteChannel(final URI uri, Set<? extends OpenOption> options,
+                                              final FileAttribute<?>... attrs) throws IOException {
 
         //  Load, verify, normalize flags.
         OpenOptionFlags flags = new OpenOptionFlags(options);
@@ -129,8 +209,6 @@ public class FileServiceImpl extends BaseNeo4jfsService implements FileService {
         }
     }
 
-
-
     /**
      * Does the actual work of creating a file.  Other than how the file is created via Storage Manager, the
      * steps are identical, hence the helper method.
@@ -139,7 +217,7 @@ public class FileServiceImpl extends BaseNeo4jfsService implements FileService {
      * @return FileEntry for just-created file
      * @throws IOException for whatever reason, the file could not be created
      */
-    private FileEntry createWork(URI uri, InputStream is) throws IOException {
+    private FileEntry createWork(final URI uri, final InputStream is) throws IOException {
         checkUri(uri);
 
         //  Does parent directory exist and is it a directory?
@@ -149,16 +227,14 @@ public class FileServiceImpl extends BaseNeo4jfsService implements FileService {
         }
 
         //  Is there already a file or subdir with the same name?
-        BaseEntry child = repository.findNamedChild(uri, parent.getId(), Path.of(uri).getFileName().toString());
-        if (child != null) {
-            throw new FileAlreadyExistsException(uri.toString());
-        }
+        String fileName = Path.of(uri).getFileName().toString();
+        verifyNameUniqueness(uri, (DirectoryEntry) parent, fileName, false);
 
         //  When InputStream provided, we have data to persist; without create an empty file
         StorageFileInfo info = (is != null) ? storageManager.createFile(uri, is) : storageManager.createFile(uri);
 
         //  Create/persist new file entry.
-        FileEntry f = repository.create(uri, Path.of(uri).getFileName().toString(), info.getStorageId(), info.getSize());
+        FileEntry f = repository.create(uri, fileName, info.getStorageId(), info.getSize());
 
         //  Add to the parent directory.
         directoryService.addFile(uri, (DirectoryEntry) parent, f);
@@ -172,7 +248,7 @@ public class FileServiceImpl extends BaseNeo4jfsService implements FileService {
      * @param file specific file to delete
      * @throws IOException for whatever reason, the file could not be deleted
      */
-    private void deleteWork(URI uri, FileEntry file) throws IOException {
+    private void deleteWork(final URI uri, final FileEntry file) throws IOException {
 
         //  Delete the node first and then the file.
         if (!repository.delete(uri, file.getId())) {
@@ -196,7 +272,7 @@ public class FileServiceImpl extends BaseNeo4jfsService implements FileService {
      * @return FileEntry for the file specified
      * @throws IOException path not found, path isn't a file, etc.
      */
-    private FileEntry prologueExistingFile(URI uri, boolean createIfNotFound) throws IOException {
+    private FileEntry prologueExistingFile(final URI uri, final boolean createIfNotFound) throws IOException {
         checkUri(uri);
 
         List<BaseEntry> parts = directoryService.find(uri);
@@ -223,7 +299,7 @@ public class FileServiceImpl extends BaseNeo4jfsService implements FileService {
      * @param channel the channel on which to register the callback.
      * @param uri Neo4Jfs URI for the file to delete.
      */
-    private void registerDeleteCallback(CallbackSeekableByteChannel channel, URI uri) {
+    private void registerDeleteCallback(final CallbackSeekableByteChannel channel, final URI uri) {
         channel.registerCallback(() -> {
             try {
                 delete(uri);
@@ -233,9 +309,17 @@ public class FileServiceImpl extends BaseNeo4jfsService implements FileService {
         });
     }
 
-    private SeekableByteChannel newByteChannelReadOnly(URI uri,
-                                                       OpenOptionFlags flags,
-                                                       FileAttribute<?>... attrs) throws IOException {
+    /**
+     * Create a read-only seekable byte channel for a Neo4Jfs file.
+     * @param uri URI to Neo4Jfs file
+     * @param flags set of options for opening physical file
+     * @param attrs file attributes
+     * @return seekable byte channel
+     * @throws IOException if I/O fails while creating channel
+     */
+    private SeekableByteChannel newByteChannelReadOnly(final URI uri,
+                                                       final OpenOptionFlags flags,
+                                                       final FileAttribute<?>... attrs) throws IOException {
 
         // File must already exist for read-only access.
         FileEntry f = prologueExistingFile(uri, false);
@@ -253,9 +337,17 @@ public class FileServiceImpl extends BaseNeo4jfsService implements FileService {
         return channel;
     }
 
-    private SeekableByteChannel newByteChannelWrite(URI uri,
-                                                    OpenOptionFlags flags,
-                                                    FileAttribute<?>... attrs) throws IOException {
+    /**
+     * Create a read-write or write-only seekable byte channel for a Neo4Jfs file, based on flags.
+     * @param uri URI to Neo4Jfs file
+     * @param flags set of options for opening physical file
+     * @param attrs file attributes
+     * @return seekable byte channel
+     * @throws IOException if I/O fails while creating channel
+     */
+    private SeekableByteChannel newByteChannelWrite(final URI uri,
+                                                    final OpenOptionFlags flags,
+                                                    final FileAttribute<?>... attrs) throws IOException {
 
         FileEntry f = null;
         if (flags.createNew) {
@@ -288,7 +380,7 @@ public class FileServiceImpl extends BaseNeo4jfsService implements FileService {
      * Retrieve file size from storage manager and updates FileEntry.
      * @param uri URI for Neo4Jfs file
      */
-    private void updateSize(URI uri) {
+    private void updateSize(final URI uri) {
 
         try {
             //  Retrieve complete path based on URI.
@@ -313,6 +405,37 @@ public class FileServiceImpl extends BaseNeo4jfsService implements FileService {
         }
     }
 
+    /**
+     * Verifies that name of new file doesn't conflict with existing file/directory in the destination directory.
+     * @param uri URI for new file
+     * @param directory target directory where new file will be created
+     * @param fileName proposed name of new file which should not exist in current directory.
+     * @throws IOException when new file name would conflict with existing, other IO errors.
+     */
+    private void verifyNameUniqueness(final URI uri,
+                                      final DirectoryEntry directory,
+                                      final String fileName,
+                                      final boolean replace) throws IOException {
+        //  Is there already a file or subdir with the same name?
+        BaseEntry child = repository.findNamedChild(uri, directory.getId(), fileName);
+        if (child != null) {
+            if (replace) {
+                switch (child) {
+                    case FileEntry fe:
+                        deleteWork(uri, fe);
+                        break;
+                    case DirectoryEntry de:
+                        directoryService.delete(uri);
+                        break;
+                    default:
+                        throw new Neo4jfsUnknownEntryException(child.getClass().getSimpleName());
+                }
+        } else {
+            throw new FileAlreadyExistsException(uri.toString());
+        }
+            }
+    }
+
     @PostConstruct
     private void init() {
         directoryService.registerFileService(this);
@@ -321,7 +444,7 @@ public class FileServiceImpl extends BaseNeo4jfsService implements FileService {
     /**
      * Helper class for managing/checking {@code OpenOption} provided.
      */
-    protected class OpenOptionFlags {
+    private class OpenOptionFlags {
 
         //  Flag per each {@code StandardOpenOption} value
         boolean append = false;
@@ -390,7 +513,7 @@ public class FileServiceImpl extends BaseNeo4jfsService implements FileService {
          * Return set of OpenOption based on flags, skipping those not applicable to Neo4Jfs:
          * -CREATE and CREATE_NEW: Neo4Jfs file prerequisite for creating channel, therefore file exists in storage manager
          * -SPARSE only applies when file created (assuming storage is local disk) and doesn't apply here as well
-         * @return
+         * @return set of OpenOption flags
          */
         Set<OpenOption> toSet() {
             Set<OpenOption> set = new HashSet<>();

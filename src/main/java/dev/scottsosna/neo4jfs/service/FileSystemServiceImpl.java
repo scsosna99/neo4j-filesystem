@@ -4,14 +4,18 @@ import dev.scottsosna.neo4jfs.database.model.neo4j.Database;
 import dev.scottsosna.neo4jfs.database.model.neo4j.DatabaseAccessType;
 import dev.scottsosna.neo4jfs.database.model.neo4j.DatabaseStatusType;
 import dev.scottsosna.neo4jfs.database.model.neo4j.DatabaseType;
+import dev.scottsosna.neo4jfs.database.node.DirectoryEntry;
 import dev.scottsosna.neo4jfs.database.repository.DatabaseRepository;
 import dev.scottsosna.neo4jfs.database.repository.util.DebuggingFileVisitor;
 import dev.scottsosna.neo4jfs.exception.Neo4jfsDatabaseException;
+import dev.scottsosna.neo4jfs.filesystem.Neo4jfsCopyOption;
+import dev.scottsosna.neo4jfs.service.util.FileStream;
 import dev.scottsosna.neo4jfs.storage.StorageManager;
 import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
-import org.springframework.util.FileSystemUtils;
 
 import java.io.IOException;
 import java.net.URI;
@@ -27,13 +31,15 @@ public class FileSystemServiceImpl extends BaseNeo4jfsService implements FileSys
     private final FileService fileService;
     private final StorageManager storageManager;
 
+    private final static Logger logger = LoggerFactory.getLogger(DebuggingFileVisitor.class);
+
     /**
      * Constructor
      */
-    public FileSystemServiceImpl(DatabaseRepository repository,
-                                 DirectoryService directoryService,
-                                 FileService fileService,
-                                 StorageManager storageManager) {
+    public FileSystemServiceImpl(final DatabaseRepository repository,
+                                 final DirectoryService directoryService,
+                                 final FileService fileService,
+                                 final StorageManager storageManager) {
         this.repository = repository;
         this.directoryService = directoryService;
         this.fileService = fileService;
@@ -45,7 +51,7 @@ public class FileSystemServiceImpl extends BaseNeo4jfsService implements FileSys
      * storage partition is available/usable.
      * @param fsUri Neo4Jfs URI for the file system to initialize.
      */
-    public void init(URI fsUri) throws IOException {
+    public void init(final URI fsUri) throws IOException {
         checkUri(fsUri);
 
         //  Does a database exist for the partition?
@@ -68,7 +74,7 @@ public class FileSystemServiceImpl extends BaseNeo4jfsService implements FileSys
      * Deletes the complete file system, including content managed by Storage Manager.
      * @param fsUri Neo4Jfs URI for the file system to delete.
      */
-    public void drop(URI fsUri) {
+    public void drop(final URI fsUri) {
         //  Best effort made.  If Neo4J database fails to delete, no attempt to delete storage partition so the file
         //  system is still usable.  If Neo4J dataabase is deleted but storage partition fails to delete, the
         //  physical files are left dangling: unfortunate, but since Neo4J database is gone files aren't usable.
@@ -77,11 +83,11 @@ public class FileSystemServiceImpl extends BaseNeo4jfsService implements FileSys
             repository.drop(fsUri);
             storageManager.dropPartition(fsUri);
         } catch (Exception e) {
-
+            logger.warn("Unable to drop file system {}: {}", fsUri, e.getMessage());
         }
     }
 
-    public FileStore getFileStore(URI uri) throws IOException {
+    public FileStore getFileStore(final URI uri) throws IOException {
         return storageManager.getPartitionFileStore(uri);
     }
 
@@ -89,7 +95,7 @@ public class FileSystemServiceImpl extends BaseNeo4jfsService implements FileSys
      * The Neo4fJfs URI partition defined for an existing database which must meet requirements before use.
      * @param db Database to verify.
      */
-    private void verifyDatabaseUsability(Database db) throws IOException {
+    private void verifyDatabaseUsability(final Database db) throws IOException {
         if (db.getDefaultDatabase()) throw new Neo4jfsDatabaseException("%s: Partition database must not be default.".formatted(db.getName()));
         if (db.getType() == DatabaseType.SYSTEM) throw new Neo4jfsDatabaseException("%s: Partition database must not be system.".formatted(db.getName()));
         if (db.getAccess() != DatabaseAccessType.READ_WRITE) throw new Neo4jfsDatabaseException("%s: Partition database must be read-write.".formatted(db.getName()));
@@ -110,10 +116,15 @@ public class FileSystemServiceImpl extends BaseNeo4jfsService implements FileSys
                 directoryService.mkdir(new URI("neo4jfs://scsosna99/def"));
                 directoryService.mkdir(new URI("neo4jfs://scsosna99/def/hij"));
                 directoryService.mkdir(new URI("neo4jfs://scsosna99/def/klm"));
-                fileService.create(new URI("neo4jfs://scsosna99/def/mySecondFile"), Path.of("/Users/scsosna/data/music/manu/viva_la_colifata/1_02_Sabias_Palabras.mp3"));
-                fileService.create(new URI("neo4jfs://scsosna99/def/myThirdFile"), Path.of("/Users/scsosna/data/music/manu/viva_la_colifata/1_02_Sabias_Palabras.mp3"));
-                fileService.create(new URI("neo4jfs://scsosna99/def/myFourthFile"), Path.of("/Users/scsosna/data/music/manu/viva_la_colifata/1_02_Sabias_Palabras.mp3"));
-                fileService.delete(new URI("neo4jfs://scsosna99/def/myFourthFile"));
+                fileService.create(new URI("neo4jfs://scsosna99/def/1stFile"), Path.of("/Users/scsosna/data/music/manu/viva_la_colifata/1_02_Sabias_Palabras.mp3"));
+                fileService.create(new URI("neo4jfs://scsosna99/def/2ndFile"), Path.of("/Users/scsosna/data/music/manu/viva_la_colifata/1_02_Sabias_Palabras.mp3"));
+                fileService.create(new URI("neo4jfs://scsosna99/def/3rdFile"), Path.of("/Users/scsosna/data/music/manu/viva_la_colifata/1_02_Sabias_Palabras.mp3"));
+                fileService.create(new URI("neo4jfs://scsosna99/def/4thFile"), Path.of("/Users/scsosna/data/music/manu/viva_la_colifata/1_02_Sabias_Palabras.mp3"));
+                fileService.create(new URI("neo4jfs://scsosna99/def/5thFile"), Path.of("/Users/scsosna/data/music/manu/viva_la_colifata/1_02_Sabias_Palabras.mp3"));
+                fileService.create(new URI("neo4jfs://scsosna99/def/6thFile"), Path.of("/Users/scsosna/data/music/manu/viva_la_colifata/1_02_Sabias_Palabras.mp3"));
+                fileService.create(new URI("neo4jfs://scsosna99/def/7thFile"), Path.of("/Users/scsosna/data/music/manu/viva_la_colifata/1_02_Sabias_Palabras.mp3"));
+                fileService.create(new URI("neo4jfs://scsosna99/def/8thFile"), Path.of("/Users/scsosna/data/music/manu/viva_la_colifata/1_02_Sabias_Palabras.mp3"));
+//                fileService.delete(new URI("neo4jfs://scsosna99/def/myFourthFile"));
 
                 directoryService.mkdir(new URI("neo4jfs://scsosna99/def/hij/test0"));
                 directoryService.mkdir(new URI("neo4jfs://scsosna99/def/hij/test1"));
@@ -127,14 +138,18 @@ public class FileSystemServiceImpl extends BaseNeo4jfsService implements FileSys
                 directoryService.mkdir(new URI("neo4jfs://scsosna99/def/hij/test9"));
                 fileService.create(new URI("neo4jfs://scsosna99/def/hij/myFirstFile"), Path.of("/Users/scsosna/data/music/manu/viva_la_colifata/1_02_Sabias_Palabras.mp3"));
                 fileService.create(new URI("neo4jfs://scsosna99/def/hij/test9//myFirstFile"), Path.of("/Users/scsosna/data/music/manu/viva_la_colifata/1_02_Sabias_Palabras.mp3"));
-
-                Files.newDirectoryStream(fs.getPath("/def/hij")).forEach(System.out::println);
-                FileSystemUtils.copyRecursively(fs.getPath("/def"), fs.getPath("/scs1"));
-
+                directoryService.copy(new URI("neo4jfs://scsosna99/def/"), new URI("neo4jfs://scsosna99/scs1/scs2"), Neo4jfsCopyOption.RECURVSIVE_COPY);
+//
+//                Files.newDirectoryStream(fs.getPath("/def/hij")).forEach(System.out::println);
+//                FileSystemUtils.copyRecursively(fs.getPath("/def"), fs.getPath("/scs1"));
+//                directoryService.mkdir(new URI("neo4jfs://scsosna99/scs2/build"));FileSystemUtils.copyRecursively(fs.getPath("/Users/scsosna/data/src/github/neo4jfs/build"), fs.getPath("/scs1/scs2"));
+//
+//                fileService.copy(new URI("neo4jfs://scsosna99/myRootFile"), new URI("neo4jfs://scsosna99/abc/myFirstFile"), StandardCopyOption.REPLACE_EXISTING);
+//
 
                 //                directoryService.dumpTree(new URI("neo4jfs://scsosna99/"));
-                Files.copy(Path.of("/Users/scsosna/data/music/manu/siberie_metait_conte/14_Siberie_Fleuve_Amour.mp3"), fs.getPath("/abc/random.mp3"));
-                Files.move(fs.getPath("/myRootFile"), fs.getPath("/def/mySecondFile"), StandardCopyOption.REPLACE_EXISTING);
+//                Files.copy(Path.of("/Users/scsosna/data/music/manu/siberie_metait_conte/14_Siberie_Fleuve_Amour.mp3"), fs.getPath("/abc/random.mp3"));
+//                Files.move(fs.getPath("/myRootFile"), fs.getPath("/def/mySecondFile"), StandardCopyOption.REPLACE_EXISTING);
 //                directoryService.dumpTree(new URI("neo4jfs://scsosna99/"));
 //                Files.walkFileTree(Path.of("/Users/scsosna/data/src/github/neo4jfs/build"), 1, null);
 //                FileSystemUtils.copyRecursively(fs.getPath("/def"), fs.getPath("/abc"));

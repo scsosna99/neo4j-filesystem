@@ -10,18 +10,21 @@ import dev.scottsosna.neo4jfs.database.repository.util.Neo4jfsFileAttributes;
 import dev.scottsosna.neo4jfs.database.repository.util.Neo4jfsTreeWalker;
 import dev.scottsosna.neo4jfs.exception.Neo4jfsIdenticalSourceTargetException;
 import dev.scottsosna.neo4jfs.exception.Neo4jfsUnknownEntryException;
+import dev.scottsosna.neo4jfs.filesystem.Neo4jfsCopyOption;
 import dev.scottsosna.neo4jfs.service.util.CopyMoveConsumer;
+import dev.scottsosna.neo4jfs.service.util.FileStream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import org.springframework.util.FileSystemUtils;
 
 import java.io.IOException;
 import java.net.URI;
 import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributeView;
 import java.time.Instant;
-import java.util.Arrays;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
@@ -245,13 +248,22 @@ public class DirectoryServiceImpl extends BaseNeo4jfsService implements Director
         return repository.getParentWithChildren(uri, parentId, skip, limit);
     }
 
-    public DirectoryEntry findSubdirs(final URI uri,
-                                      final String parentId,
-                                      final int skip,
-                                      final int limit) {
+    public List<FileEntry> findFiles(final URI uri,
+                                    final String parentId,
+                                    final int skip,
+                                    final int limit) {
+        checkUri(uri);
+        return repository.getFiles(uri, parentId, skip, limit);
+    }
+
+    public List<DirectoryEntry> findSubdirs(final URI uri,
+                                            final String parentId,
+                                            final int skip,
+                                            final int limit) {
         checkUri(uri);
         return repository.getSubdirs(uri, parentId, skip, limit);
     }
+
     /**
      * Returns the entry specified by URI as BasicFileAttributeView, needed by file system provider.
      * @param uri Neo4Jfs URI for the directory or file to read attribute view for.
@@ -295,50 +307,17 @@ public class DirectoryServiceImpl extends BaseNeo4jfsService implements Director
         repository.save(uri, entry, BaseEntry.class);
     }
 
-
-    private void copyWork(final URI fsUri,
-                          final BaseEntry source,
-                          final DirectoryEntry sourceParent,
-                          final BaseEntry target,
-                          final DirectoryEntry targetParent,
-                          final String targetName,
-                          final CopyOption[] options) throws IOException {
-        switch(source) {
-            case FileEntry f:
-                // if target exists and is a file, delete and copy into parent directory.
-                // if target exists and is a directory, copy into target directory.
-                // if target does not exist, copy into parent directory
-                break;
-            case DirectoryEntry d:
-                // if target exists and is a directory, recursively copy into directory
-                // if target does not exists, recursively copy into target parent
-                break;
-            default:
-                throw new Neo4jfsUnknownEntryException(source.getClass().getName());
-        }
-    }
-
-
     /**
-     * Do actual moving of source to target, whatever that may be.
-     *
+     * Check whether existing target (file or directory) can be overwritten during copy/merge
      * @param fsUri Neo4Jfs file system URI
-     * @param source source file or directory to move
-     * @param sourceParent source parent directory
-     * @param target target of maove, which may be null
-     * @param targetParent target parent directory, which always exists
-     * @param targetName name of target, may require renaming exsisting entry.
-     * @param options "copy" options to apply to move
-     * @throws IOException if an I/O error occurs.
+     * @param target target entry of copy or move
+     * @param options copy options provided by caller
+     * @throws FileAlreadyExistsException target entry exists and cannot be overwritten.
      */
-    private void moveWork(final URI fsUri,
-                          final BaseEntry source,
-                          final DirectoryEntry sourceParent,
-                          final BaseEntry target,
-                          final DirectoryEntry targetParent,
-                          final String targetName,
-                          final CopyOption[] options) throws IOException {
-
+    private void checkForExisting(final URI fsUri,
+                                  final BaseEntry target,
+                                  final CopyOption... options) throws FileAlreadyExistsException {
+        //  Target file exists therefore check whether overwriting allowed.
         if (target != null) {
             //  Target exists, move can only proceed if explicitly alloweing target to be replaced,
             //  which means deleting existing target to be replaced by source.
@@ -351,11 +330,72 @@ public class DirectoryServiceImpl extends BaseNeo4jfsService implements Director
             }
         }
 
+    }
+
+
+    private void copyWork(final URI sourceUri,
+                          final BaseEntry source,
+                          final DirectoryEntry sourceParent,
+                          final URI targetUri,
+                          final BaseEntry target,
+                          final DirectoryEntry targetParent,
+                          final String targetName,
+                          final CopyOption[] options) throws IOException {
+
+        switch(source) {
+            case FileEntry f:
+                //  Can existing target be replaced?
+                checkForExisting(sourceUri, target, options);
+
+                //  Copy file to target location.
+                fileService.copy(f, targetUri, targetParent, options);
+                break;
+            case DirectoryEntry d:
+                if (checkForCopyOption(Neo4jfsCopyOption.RECURVSIVE_COPY, options)) {
+                    //  Deep copy directory to target location.
+                    FileSystemUtils.copyRecursively(Path.of(sourceUri), Path.of(targetUri));
+                } else {
+                    //  Only copy files from current directory to new.
+                    Iterator<FileEntry> it = new FileStream(sourceUri, d).iterator();
+                    while (it.hasNext()) {
+                        FileEntry file = it.next();
+                        fileService.copy(file, targetUri, targetParent, options);
+                    }
+                }
+                break;
+            default:
+                throw new Neo4jfsUnknownEntryException(source.getClass().getName());
+        }
+    }
+
+    /**
+     * Do actual moving of source to target, whatever that may be.
+     *
+     * @param source source file or directory to move
+     * @param sourceParent source parent directory
+     * @param target target of maove, which may be null
+     * @param targetParent target parent directory, which always exists
+     * @param targetName name of target, may require renaming exsisting entry.
+     * @param options "copy" options to apply to move
+     * @throws IOException if an I/O error occurs.
+     */
+    private void moveWork(final URI sourceUri,
+                          final BaseEntry source,
+                          final DirectoryEntry sourceParent,
+                          final URI targetUri,
+                          final BaseEntry target,
+                          final DirectoryEntry targetParent,
+                          final String targetName,
+                          final CopyOption[] options) throws IOException {
+
+        //  Can existing target be replaced?
+        checkForExisting(targetUri, target, options);
+
         if (sourceParent.equals(targetParent)) {
             //  Source and parent directories the same, so only need to rename and save.
             if (!source.getName().equals(targetName)) {
                 source.setName(targetName);
-                repository.save(fsUri, source, BaseEntry.class);
+                repository.save(sourceUri, source, BaseEntry.class);
             } else {
                 //  Hmmm, name didn' change, no work to do.
                 logger.debug("Name unchanged, skipping rename");
@@ -365,7 +405,7 @@ public class DirectoryServiceImpl extends BaseNeo4jfsService implements Director
         }
 
         //  Steps are identical except for relationship which differs for directories vs. files.
-        repository.deleteRelationship(fsUri, sourceParent.getId(), source.getId());
+        repository.deleteRelationship(sourceUri, sourceParent.getId(), source.getId());
         source.setName(targetName);
         switch (source) {
             case FileEntry f:
@@ -378,7 +418,7 @@ public class DirectoryServiceImpl extends BaseNeo4jfsService implements Director
                 //  Totally unexpected.
                 throw new Neo4jfsUnknownEntryException(source.getClass().getName());
         }
-        repository.save(fsUri, targetParent);
+        repository.save(targetUri, targetParent);
     }
 
     /**
@@ -475,6 +515,7 @@ public class DirectoryServiceImpl extends BaseNeo4jfsService implements Director
         workMethod.apply(sourceUri,
             sourceEntry,
             sourceParentEntry,
+            targetUri,
             targetEntry,
             targetParentEntry,
             targetName,
@@ -593,16 +634,6 @@ public class DirectoryServiceImpl extends BaseNeo4jfsService implements Director
     private void walkFileTree(URI uri, String fileVisitorKey) throws IOException {
         checkUri(uri);
         walkFileTree(uri, visitorMap.get(fileVisitorKey));
-    }
-
-    /**
-     * Checked for requested copy option in options passed to initial call
-     * @param requested the copy option requested
-     * @param options variable list of options
-     * @return true if found, false otherwise
-     */
-    private boolean checkForCopyOption(CopyOption requested, CopyOption[] options) {
-        return options != null && Arrays.stream(options).anyMatch(requested::equals);
     }
 
     /**

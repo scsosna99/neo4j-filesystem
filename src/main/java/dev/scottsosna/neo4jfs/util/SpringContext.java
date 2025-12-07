@@ -1,16 +1,45 @@
 package dev.scottsosna.neo4jfs.util;
 
+import dev.scottsosna.neo4jfs.config.Neo4jfsConfiguration;
+import dev.scottsosna.neo4jfs.filesystem.Neo4jfsCopyOption;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationContextAware;
 import org.springframework.stereotype.Component;
 
+import static dev.scottsosna.neo4jfs.config.Neo4jfsConstants.NEO4JFS_PROPERTY_PAGINATION_SIZE;
+
 /**
- * Utility class for retrieving Spring beans, usually outside of Spring-managed components.
+ * Utility class for retrieving Spring beans by non-Spring managed objects
  */
 @Component
 public class SpringContext implements ApplicationContextAware {
 
+    /**
+     * Spring application context
+     */
     private static ApplicationContext context;
+
+    /**
+     * Configuration instance.
+     */
+    private static Neo4jfsConfiguration config;
+
+    /**
+     * Constructor.
+     * @param config
+     */
+    public SpringContext(final Neo4jfsConfiguration config) {
+        SpringContext.config = config;
+    }
+
+    /**
+     * Saves the context for use statically.
+     * @param applicationContext the ApplicationContext object to be used by this object
+     */
+    @Override
+    public void setApplicationContext(final ApplicationContext applicationContext) {
+        SpringContext.context = applicationContext;
+    }
 
     /**
      * Returns a Spring-instantiated bean for the class specified.
@@ -21,12 +50,12 @@ public class SpringContext implements ApplicationContextAware {
         return context.getBean(beanClass);
     }
 
-    /**
-     * Saves the context for use statically.
-     * @param applicationContext the ApplicationContext object to be used by this object
-     */
-    @Override
-    public void setApplicationContext(final ApplicationContext applicationContext) {
-        SpringContext.context = applicationContext;
+    public static Integer getConfigurationProperty (final String propertyName) {
+        switch (propertyName) {
+            case NEO4JFS_PROPERTY_PAGINATION_SIZE:
+                return config.defaultPageSize;
+            default:
+                throw new IllegalArgumentException("Unknown configuration property: %s".formatted(propertyName));
+        }
     }
 }

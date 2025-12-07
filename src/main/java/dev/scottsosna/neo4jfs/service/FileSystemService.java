@@ -5,7 +5,7 @@ import java.net.URI;
 import java.nio.file.FileStore;
 
 public interface FileSystemService {
-    void init(URI uri) throws IOException;
-    void drop(URI uri);
-    FileStore getFileStore(URI uri) throws IOException;
+    void init(final URI uri) throws IOException;
+    void drop(final URI uri);
+    FileStore getFileStore(final URI uri) throws IOException;
 }

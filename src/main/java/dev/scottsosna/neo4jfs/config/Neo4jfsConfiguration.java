@@ -22,4 +22,6 @@ public class Neo4jfsConfiguration {
     @Value("${neo4j.database.default:system}")
     public String neo4jBaseDatabaseName;
 
+    @Value("${neo4jfs.pageSize:500}")
+    public Integer defaultPageSize;
 }
