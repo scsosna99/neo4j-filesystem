@@ -57,7 +57,7 @@ public class Neo4jfsDirectoryStream implements DirectoryStream<Path>, AutoClosea
     /**
      * Pagination: number of children entries retrieved from Neo4J for each query.
      */
-    private fina; int paginationMaxPerCall;
+    private final int paginationMaxPerCall;
 
     /**
      * Constructor
