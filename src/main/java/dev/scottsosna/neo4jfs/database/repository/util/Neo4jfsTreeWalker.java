@@ -9,7 +9,6 @@ import dev.scottsosna.neo4jfs.exception.Neo4jfsException;
 import dev.scottsosna.neo4jfs.exception.Neo4jfsUnknownEntryException;
 import dev.scottsosna.neo4jfs.service.DirectoryService;
 import dev.scottsosna.neo4jfs.util.SpringContext;
-import lombok.Getter;
 
 import java.io.Closeable;
 import java.io.IOException;
@@ -23,12 +22,16 @@ import java.util.List;
 
 import static dev.scottsosna.neo4jfs.config.Neo4jfsConstants.NEO4JFS_PROPERTY_PAGINATION_SIZE;
 
+/**
+ * Neo4Jfs-specific tree walker that works with Neo4Jfs-specific visitors.  More optimized (I believe!) than using
+ * {@code java.nio.file.Files.walkFileTree(Path, FileVisitor)}
+ */
 public class Neo4jfsTreeWalker implements Closeable {
 
     /**
      * No more work possible when tree walked closed.
      */
-    private boolean closed = false;
+    private boolean closed;
 
     /**
      * The maximum directory depth visited.
@@ -70,25 +73,12 @@ public class Neo4jfsTreeWalker implements Closeable {
      * Details of life cycle events that are returned to caller as the tree is walked.
      * NOTE: Properties are finalized to prevent external modification.
      */
-    @Getter
-    public static class NeofjfsWalkerEvent {
-        final EventType eventType;
-        final DirectoryEntry directory;
-        final FileEntry file;
-        final URI uri;
-        final IOException exception;
-
-        private NeofjfsWalkerEvent(EventType eventType,
-                                   DirectoryEntry directory,
-                                   FileEntry file,
-                                   URI uri,
-                                   IOException exception) {
-            this.eventType = eventType;
-            this.directory = directory;
-            this.file = file;
-            this.uri = uri;
-            this.exception = exception;
-        }
+    public record NeofjfsWalkerEvent (
+        EventType eventType,
+        DirectoryEntry directory,
+        FileEntry file,
+        URI uri,
+        IOException exception) {
     }
 
     /**
@@ -108,7 +98,9 @@ public class Neo4jfsTreeWalker implements Closeable {
          * @param dir starting directory for walking the trees
          * @param skipped
          */
-        public Neo4jfsWalkerData(URI uri, DirectoryEntry dir, int skipped) {
+        public Neo4jfsWalkerData(final URI uri,
+                                 final DirectoryEntry dir,
+                                 final int skipped) {
             this.uri = uri;
             this.dir = dir;
             this.files = (dir.getFiles() != null) ? dir.getFiles().iterator() : Collections.emptyIterator();
@@ -129,7 +121,7 @@ public class Neo4jfsTreeWalker implements Closeable {
         this.closed = false;
         this.maxDepth = maxDepth;
         this.repository = SpringContext.getBean(DirectoryEntryRepository.class);
-        this.paginationMaxPerCall = SpringContext.getConfigurationProperty(NEO4JFS_PROPERTY_PAGINATION_SIZE);
+        this.paginationMaxPerCall = SpringContext.getPropertyInteger(NEO4JFS_PROPERTY_PAGINATION_SIZE);
     }
 
     /**
@@ -165,7 +157,7 @@ public class Neo4jfsTreeWalker implements Closeable {
             case DirectoryEntry d:
                 //  The node returned by getStartingEntry() does not return directories files or subdirectories, so
                 //  retrieve them separately.  The results are paginated to prevent problems with large file systems.
-                DirectoryEntry withChildren = repository.getParentWithChildren(uri, d.getId(), 0, paginationMaxPerCall);
+                DirectoryEntry withChildren = repository.getChildren(uri, d.getId(), 0, paginationMaxPerCall);
                 if (withChildren == null) {
                     //  Current directory has no subdirs or files so substitute the starting node so walk can continue.
                     withChildren = d;
@@ -349,7 +341,7 @@ public class Neo4jfsTreeWalker implements Closeable {
         //  Both iterators exhausted may simply mean that current page of children objects are exhausted and more are
         //  available.  Attempt to retrieve more.
         if (!current.files.hasNext() && !current.subdirs.hasNext()) {
-            DirectoryEntry withChildren = repository.getParentWithChildren(current.uri, current.dir.getId(), current.skipped, paginationMaxPerCall);
+            DirectoryEntry withChildren = repository.getChildren(current.uri, current.dir.getId(), current.skipped, paginationMaxPerCall);
 
             //  It's possible - likely with anything but an extremely large file system - that the directory has no
             //  additional files, subdirs, etc. to process in which case we'll simply drop out farther down.
@@ -385,7 +377,7 @@ public class Neo4jfsTreeWalker implements Closeable {
             //  Entry retrieve _should_ be a directory, but just in case...
             if (subdirEntry instanceof DirectoryEntry d) {
                 //  Re-retrieve node, this time gettings its children as well.
-                DirectoryEntry subdirAndChildren = repository.getParentWithChildren(uri, d.getId(), 0, paginationMaxPerCall);
+                DirectoryEntry subdirAndChildren = repository.getChildren(uri, d.getId(), 0, paginationMaxPerCall);
                 if (subdirAndChildren == null) {
                     subdirAndChildren = d;
                 }
@@ -405,7 +397,6 @@ public class Neo4jfsTreeWalker implements Closeable {
         return null;
     }
 
-
     /**
      * Correctly build a URI, accounting for starting at root where concatenating separator not needed.
      *
@@ -414,13 +405,17 @@ public class Neo4jfsTreeWalker implements Closeable {
      * @return new URI with the subdirectory.
      */
     private URI buildWithChild(URI current, String childName) {
-        if (current.getPath().endsWith(DirectoryService.SEPARATOR)) {
+        if (current.getPath().endsWith(Neo4jfsConstants.PATH_SEPARATOR)) {
             return URI.create(current + childName);
         } else {
-            return URI.create(current + DirectoryService.SEPARATOR + childName);
+            return URI.create(current + Neo4jfsConstants.PATH_SEPARATOR + childName);
         }
     }
 
+    /**
+     * Tree walker is closed and no longer usable.
+     * @throws IOException not thrown but defined in parent interface.
+     */
     @Override
     public void close() throws IOException {
         closed = true;

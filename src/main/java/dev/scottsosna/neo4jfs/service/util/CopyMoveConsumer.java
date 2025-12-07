@@ -7,6 +7,10 @@ import dev.scottsosna.neo4jfs.util.Consumer8;
 import java.net.URI;
 import java.nio.file.CopyOption;
 
+/**
+ * Functional intereface defining work methods used during copy or move operations, passed into a workflow method that
+ * coordinates/validates/executes the copy or move.
+ */
 @FunctionalInterface
 public interface CopyMoveConsumer extends Consumer8<
     URI,

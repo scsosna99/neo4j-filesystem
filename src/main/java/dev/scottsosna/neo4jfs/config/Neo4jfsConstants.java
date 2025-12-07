@@ -2,6 +2,9 @@ package dev.scottsosna.neo4jfs.config;
 
 import java.util.List;
 
+/**
+ * Neo4jfs constants stored in a centralized, standard location.
+ */
 public class Neo4jfsConstants {
 
     /**
@@ -18,6 +21,11 @@ public class Neo4jfsConstants {
      * Using standard *nix admin user "root" for all uber-user permissioning.
      */
     public static final String NAME_ADMIN_USER = "root";
+
+    /**
+     * What character separates path elements in Neo4Jfs.
+     */
+    public static final String PATH_SEPARATOR = "/";
 
     /**
      * The URI scheme required by Neo4J file system.  URIs through must provide this.

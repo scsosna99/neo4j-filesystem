@@ -3,6 +3,9 @@ package dev.scottsosna.neo4jfs.database.repository.util;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.attribute.FileTime;
 
+/**
+ * Implements BasicFileAttributes for Neo4Jfs, currently just a stub required for customized tree walker.
+ */
 public class Neo4jfsFileAttributes implements BasicFileAttributes {
     @Override
     public FileTime lastModifiedTime() {

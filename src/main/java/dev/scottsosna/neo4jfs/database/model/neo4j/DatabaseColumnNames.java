@@ -1,7 +1,8 @@
 package dev.scottsosna.neo4jfs.database.model.neo4j;
 
 /**
- * Column names for the data that comes back from a "SHOW DATABASE" query.
+ * Column names for the data that comes back from a "SHOW DATABASE" query as defined by
+ * https://neo4j.com/docs/operations-manual/current/database-administration/standard-databases/listing-databases/
  */
 public class DatabaseColumnNames {
 
@@ -10,7 +11,7 @@ public class DatabaseColumnNames {
     public final static String ALIASES = "aliases";
     public final static String CONSTITUENTS = "constituents";
     public final static String CURRENT_STATUS = "currentStatus";
-    public final static String DEFAULT = "default";
+    public final static String DEFAULT = "default"; // NOTE: Java keyword
     public final static String HOME = "home";
     public final static String NAME = "name";
     public final static String OWNER = "owner";

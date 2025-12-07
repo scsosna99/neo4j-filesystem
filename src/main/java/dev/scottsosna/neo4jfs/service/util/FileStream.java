@@ -8,7 +8,6 @@ import dev.scottsosna.neo4jfs.util.SpringContext;
 import java.io.Closeable;
 import java.io.IOException;
 import java.net.URI;
-import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
@@ -61,7 +60,7 @@ public class FileStream implements Iterable<FileEntry>, Closeable, AutoCloseable
         this.fsUri = fsUri;
         this.d = d;
         this.service = SpringContext.getBean(DirectoryService.class);
-        this.paginationMaxPerCall = SpringContext.getConfigurationProperty(NEO4JFS_PROPERTY_PAGINATION_SIZE);
+        this.paginationMaxPerCall = SpringContext.getPropertyInteger(NEO4JFS_PROPERTY_PAGINATION_SIZE);
     }
 
     /**

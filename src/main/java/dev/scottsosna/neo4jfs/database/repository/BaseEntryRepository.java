@@ -4,6 +4,9 @@ import dev.scottsosna.neo4jfs.database.node.BaseEntry;
 
 import java.net.URI;
 
+/**
+ * Interface defining shared repository functionality.
+ */
 public interface BaseEntryRepository {
 
     /**
@@ -16,7 +19,7 @@ public interface BaseEntryRepository {
      * @param childNodeName name of the child node desired
      * @return the child node, when found, or null.
      */
-    BaseEntry findNamedChild(URI fsUri, String directoryNodeId, String childNodeName);
+    BaseEntry findNamedChild(final URI fsUri, final String directoryNodeId, final String childNodeName);
 
     /**
      * Save or update an entry to Neo4J
@@ -25,7 +28,7 @@ public interface BaseEntryRepository {
      * @param entry entry to be persisted
      * @param clazz specific class of entry, e.g. DirectoryEntry or FileEntry
      */
-    <T extends BaseEntry> void save(URI uri, T entry, Class<T> clazz);
+    <T extends BaseEntry> void save(final URI uri, final T entry, final Class<T> clazz);
 
     /**
      * Remove the relationship between two nodes identified by their ids.
@@ -43,5 +46,5 @@ public interface BaseEntryRepository {
      * @param uri URI of the file system, using host to identify database.
      * @param entry entry to have its last accessed timestamp updated
      */
-    void updateLastAccessed(URI uri, BaseEntry entry, Class<? extends BaseEntry> clazz);
+    void updateLastAccessed(final URI uri, final BaseEntry entry, final Class<? extends BaseEntry> clazz);
 }

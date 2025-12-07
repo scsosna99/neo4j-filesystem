@@ -7,7 +7,7 @@ import java.util.Arrays;
 import static dev.scottsosna.neo4jfs.config.Neo4jfsConstants.NEO4JFS_URI_SCHEME;
 
 /**
- * Base class for Neo4fjs services.
+ * Base class for all Neo4fjs services.
  */
 public class BaseNeo4jfsService {
 
@@ -17,12 +17,11 @@ public class BaseNeo4jfsService {
     protected BaseNeo4jfsService() {}
 
     /**
-     * Check URI for structure and usability.
-     *
+     * Check URI for structure and usability.     *
      * @param uri URI to validate.
      * @return normalized URI.
      */
-    protected URI checkUri(URI uri) {
+    protected URI checkUri(final URI uri) {
         if (!NEO4JFS_URI_SCHEME.equals(uri.getScheme())) {
             throw new IllegalArgumentException("URI scheme must be " + NEO4JFS_URI_SCHEME + ".");
         }
@@ -45,6 +44,4 @@ public class BaseNeo4jfsService {
     protected boolean checkForCopyOption(CopyOption requested, CopyOption[] options) {
         return options != null && Arrays.stream(options).anyMatch(requested::equals);
     }
-
-
 }

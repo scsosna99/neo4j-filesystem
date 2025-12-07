@@ -1,7 +1,6 @@
 package dev.scottsosna.neo4jfs.util;
 
 import dev.scottsosna.neo4jfs.config.Neo4jfsConfiguration;
-import dev.scottsosna.neo4jfs.filesystem.Neo4jfsCopyOption;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationContextAware;
 import org.springframework.stereotype.Component;
@@ -50,7 +49,12 @@ public class SpringContext implements ApplicationContextAware {
         return context.getBean(beanClass);
     }
 
-    public static Integer getConfigurationProperty (final String propertyName) {
+    /**
+     * Returns a specific configuration property.
+     * @param propertyName property name
+     * @return currently-configured value.
+     */
+    public static Integer getPropertyInteger(final String propertyName) {
         switch (propertyName) {
             case NEO4JFS_PROPERTY_PAGINATION_SIZE:
                 return config.defaultPageSize;

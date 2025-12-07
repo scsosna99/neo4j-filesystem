@@ -35,7 +35,7 @@ public enum DatabaseStatusType {
      * Constructor
      * @param statusValue Neo4J status value for this enum
      */
-    DatabaseStatusType(String statusValue) {
+    DatabaseStatusType(final String statusValue) {
         this.statusValue = statusValue;
     }
 
@@ -52,7 +52,7 @@ public enum DatabaseStatusType {
      * @param neo4jValue value returned by Neo4J
      * @return associated enum or throw exception if unknown
      */
-    static public DatabaseStatusType convert(String neo4jValue) {
+    static public DatabaseStatusType convert(final String neo4jValue) {
         var toReturn = neo4jValueMap.get(neo4jValue);
         if (toReturn == null) {
             throw new IllegalArgumentException("Unknown status: " + neo4jValue);

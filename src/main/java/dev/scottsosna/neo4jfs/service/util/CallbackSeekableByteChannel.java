@@ -7,7 +7,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Proxies a SeekableByteChanngel to allow post-close actions.
+ * SeekableByteChanngel proxy so interested parties can register callbacks to be executed upon close.
  */
 public class CallbackSeekableByteChannel implements SeekableByteChannel {
 
@@ -25,14 +25,15 @@ public class CallbackSeekableByteChannel implements SeekableByteChannel {
      * Constructor
      * @param delegate SeekableByteChannel to be proxied.
      */
-    public CallbackSeekableByteChannel(SeekableByteChannel delegate) {
+    public CallbackSeekableByteChannel(final SeekableByteChannel delegate) {
         this.delegate = delegate;
     }
+
     /**
      * Add callback to be executed upon close.
      * @param callback Runnable to be executed.
      */
-    public void registerCallback(Runnable callback) {
+    public void registerCallback(final Runnable callback) {
         callbacks.add(callback);
     }
 

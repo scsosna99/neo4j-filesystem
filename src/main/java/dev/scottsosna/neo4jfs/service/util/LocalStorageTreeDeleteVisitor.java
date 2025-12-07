@@ -6,6 +6,9 @@ import java.nio.file.Path;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
 
+/**
+ * Neo4Jfs-specific FileVisitor that deletes a directory and its subdirectories in a single operation.
+ */
 public class LocalStorageTreeDeleteVisitor extends SimpleFileVisitor<Path> {
 
     /**

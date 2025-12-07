@@ -15,29 +15,27 @@ public enum DatabaseAccessType {
     /**
      * Access value returned by Neo4J.
      */
-    private final String access;
+    private final String accessValue;
 
-    //  Map of status values to enum values used to convert what Neo4J into actual enum
     /**
      * Maps access values to enum values, used to convert what Neo4J returns int enum.
      */
     static final Map<String,DatabaseAccessType> neo4jValueMap;
 
-
     /**
      * Constructor
-     * @param access Neo4J access value for this enum
+     * @param accessValue Neo4J access value for this enum
      */
-    DatabaseAccessType(String access) {
-        this.access = access;
+    DatabaseAccessType(final String accessValue) {
+        this.accessValue = accessValue;
     }
 
     /**
      * Getter
      * @return Neo4J access value
      */
-    public String getAccess() {
-        return access;
+    public String getAccessValue() {
+        return accessValue;
     }
 
     /**
@@ -45,7 +43,7 @@ public enum DatabaseAccessType {
      * @param neo4jValue value returned by Neo4J
      * @return associated enum or throw exception if unknown
      */
-    static public DatabaseAccessType convert(String neo4jValue) {
+    static public DatabaseAccessType convert(final String neo4jValue) {
         var toReturn = neo4jValueMap.get(neo4jValue);
         if (toReturn == null) {
             throw new IllegalArgumentException("Unknown status: " + neo4jValue);
@@ -59,6 +57,6 @@ public enum DatabaseAccessType {
      */
     static {
         neo4jValueMap = Arrays.stream(values())
-            .collect(Collectors.toMap(DatabaseAccessType::getAccess, e -> e));
+            .collect(Collectors.toMap(DatabaseAccessType::getAccessValue, e -> e));
     }
 }

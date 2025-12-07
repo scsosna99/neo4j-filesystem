@@ -134,7 +134,7 @@ public class Neo4jFileSystemProvider extends FileSystemProvider {
     /**
      * Create fully-qualified Neo4Jfs path from URI.
      *
-     * @param uri URI specifying Neo4Jfs partition (host) and path.
+     * @param uri URI of fully-qualified Neo4Jfs path to file or directory.
      * @return Neo4Jfs path.
      */
     @Override
@@ -172,7 +172,9 @@ public class Neo4jFileSystemProvider extends FileSystemProvider {
      * @throws IOException if an I/O error occurs
      */
     @Override
-    public SeekableByteChannel newByteChannel(Path path, Set<? extends OpenOption> options, FileAttribute<?>... attrs) throws IOException {
+    public SeekableByteChannel newByteChannel(Path path,
+                                              Set<? extends OpenOption> options,
+                                              FileAttribute<?>... attrs) throws IOException {
         return fileService.newByteChannel(path.toUri(), options, attrs);
     }
 
@@ -187,7 +189,8 @@ public class Neo4jFileSystemProvider extends FileSystemProvider {
      * @throws IOException if an I/O error occurs
      */
     @Override
-    public DirectoryStream<Path> newDirectoryStream(Path dir, DirectoryStream.Filter<? super Path> filter) throws IOException {
+    public DirectoryStream<Path> newDirectoryStream(Path dir,
+                                                    DirectoryStream.Filter<? super Path> filter) throws IOException {
         return new Neo4jfsDirectoryStream(dir);
     }
 
@@ -223,7 +226,9 @@ public class Neo4jFileSystemProvider extends FileSystemProvider {
      * @throws IOException if an I/O error occurs
      */
     @Override
-    public void copy(Path source, Path target, CopyOption... options) throws IOException {
+    public void copy(Path source,
+                     Path target,
+                     CopyOption... options) throws IOException {
         directoryService.copy(source.toUri(), target.toUri(), options);
     }
 
@@ -236,7 +241,9 @@ public class Neo4jFileSystemProvider extends FileSystemProvider {
      * @throws IOException problems moving file or directory.
      */
     @Override
-    public void move(Path source, Path target, CopyOption... options) throws IOException {
+    public void move(Path source,
+                     Path target,
+                     CopyOption... options) throws IOException {
         directoryService.move(source.toUri(), target.toUri(), options);
     }
 
@@ -300,7 +307,9 @@ public class Neo4jFileSystemProvider extends FileSystemProvider {
      * @return a file attribute view of the specific type, or {@code null} if the file does not support the specified view
      */
     @Override
-    public <V extends FileAttributeView> V getFileAttributeView(Path path, Class<V> type, LinkOption... options) {
+    public <V extends FileAttributeView> V getFileAttributeView(Path path,
+                                                                Class<V> type,
+                                                                LinkOption... options) {
         if (type == BasicFileAttributeView.class) {
             try {
                 return (V) directoryService.readAttributeView(path.toUri(), options);
@@ -323,7 +332,9 @@ public class Neo4jFileSystemProvider extends FileSystemProvider {
      * @throws IOException if an I/O error occurs
      */
     @Override
-    public <A extends BasicFileAttributes> A readAttributes(Path path, Class<A> type, LinkOption... options) throws IOException {
+    public <A extends BasicFileAttributes> A readAttributes(Path path,
+                                                            Class<A> type,
+                                                            LinkOption... options) throws IOException {
         if (type == BasicFileAttributes.class) {
             return (A) directoryService.readAttributeView(path.toUri(), options).readAttributes();
         } else {
@@ -343,7 +354,9 @@ public class Neo4jFileSystemProvider extends FileSystemProvider {
      * @throws IOException if an I/O error occurs
      */
     @Override
-    public Map<String, Object> readAttributes(Path path, String attributes, LinkOption... options) throws IOException {
+    public Map<String, Object> readAttributes(Path path,
+                                              String attributes,
+                                              LinkOption... options) throws IOException {
 
         //  Determine view name for the requested attributes.
         String viewName = determineViewName(attributes);
@@ -358,8 +371,19 @@ public class Neo4jFileSystemProvider extends FileSystemProvider {
         return buildAttributeMap(viewName, validated, fileAttributes);
     }
 
+    /**
+     * Sets a file attribute. This method works in exactly the manner specified by the Files.setAttribute(Path,String,Object,LinkOption...)
+     * @param path the path to the file
+     * @param attribute the attribute to set
+     * @param value the attribute value
+     * @param options options indicating how symbolic links are handled
+     * @throws IOException
+     */
     @Override
-    public void setAttribute(Path path, String attribute, Object value, LinkOption... options) throws IOException {
+    public void setAttribute(Path path,
+                             String attribute,
+                             Object value,
+                             LinkOption... options) throws IOException {
         //  Determine view name for the requested attributes.
         String viewName = determineViewName(attribute);
 
@@ -423,7 +447,7 @@ public class Neo4jFileSystemProvider extends FileSystemProvider {
      *
      * @param uri base URI of file system
      */
-    void removeFileSystem(URI uri) {
+    void removeFileSystem(final URI uri) {
         logger.info("Removing file system from registry: " + uri.toString());
         try {
             fileSystems.remove(uri);
@@ -439,7 +463,7 @@ public class Neo4jFileSystemProvider extends FileSystemProvider {
      * @param uri Neo4Jfs URI, could be fully-qualified with path or not.
      * @return URI with just scheme and partition (host), no path is kept.
      */
-    private URI truncateUri(URI uri) {
+    private URI truncateUri(final URI uri) {
         validateUri(uri);
         return uri.resolve(Neo4jfsConstants.NAME_ROOT_DIRECTORY);
     }
@@ -535,8 +559,8 @@ public class Neo4jFileSystemProvider extends FileSystemProvider {
 
     /**
      * Validate the attributes for the requested view.
-     *
      * @see <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/nio/file/Files.html#readAttributes(java.nio.file.Path,java.lang.String,java.nio.file.LinkOption...)"/>
+     *
      * @param viewName view name
      * @param attributes attributes to validate separated by common
      * @return subset of attributes for this view, or all if '*' provided.

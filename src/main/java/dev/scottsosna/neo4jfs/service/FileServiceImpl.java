@@ -25,15 +25,35 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+/**
+ * Service manages Neo4Jfs files.
+ */
 @Service
 public class FileServiceImpl extends BaseNeo4jfsService implements FileService {
 
+    /**
+     * Repository for managing {@code FileEntry} nodes within Neo4J database.
+     */
     private final FileEntryRepository repository;
+
+    /**
+     * Directory services manages directories/subdirectories and, important here, associated files.
+     */
     private final DirectoryService directoryService;
+
+    /**
+     * Storage Manaager instance for persisting physical files into Neo4Jfs.
+     */
     private final StorageManager storageManager;
 
+    /**
+     * Logger for this class.
+     */
     private final static Logger logger = LoggerFactory.getLogger(FileServiceImpl.class);
 
+    /**
+     * Pre-created open options when SeekableByteChannel is opened for read-only access.
+     */
     private final static Set<StandardOpenOption> READ_ONLY_OPTIONS = Set.of(StandardOpenOption.READ);
 
     /**
@@ -52,7 +72,7 @@ public class FileServiceImpl extends BaseNeo4jfsService implements FileService {
 
     /**
      * Create new, empty file for given URI
-     * @param uri Neo4Jfs file URI
+     * @param uri fully-qualified Neo4Jfs file URI
      * @throws IOException for whatever reason, the file could not be created
      */
     public void create (final URI uri) throws IOException{
@@ -61,9 +81,9 @@ public class FileServiceImpl extends BaseNeo4jfsService implements FileService {
 
     /**
      * Copy the input stream into a new file
-     * @param uri Neo4Jfs file URI
-     * @param is input stream for file contents
-     * @throws IOException for whatever reason, the file could not be created
+     * @param uri fully-qualified Neo4Jfs file URI
+     * @param is input stream for reading file contents
+     * @throws IOException if I/O fails during create for any reason.
      */
     public void create (final URI uri, final InputStream is) throws IOException {
         createWork(uri, is);
@@ -79,6 +99,13 @@ public class FileServiceImpl extends BaseNeo4jfsService implements FileService {
         create(uri, Files.newInputStream(sourceFile));
     }
 
+    /**
+     * Copies source file to target directory or file
+     * @param sourceUri Fully-qualified URI for source file
+     * @param targetUri Fully-qualified URI for target file or directory.
+     * @param options {@code CopyOption}s for this copy
+     * @throws IOException any I/O error during copy
+     */
     public void copy(URI sourceUri, URI targetUri, final CopyOption... options) throws IOException {
         sourceUri = checkUri(sourceUri);
         targetUri = checkUri(targetUri);
@@ -121,6 +148,14 @@ public class FileServiceImpl extends BaseNeo4jfsService implements FileService {
         copy (sourceFile, targetUri, targetDirectory, options);
     }
 
+    /**
+     * Copies source file to target directory or file
+     * @param sourceFile entry of source file as Neo4J node
+     * @param targetUri fully-qualified URI for target file or directory.
+     * @param targetDirectory destination directory for copied file as Neo4J node
+     * @param options {@code CopyOption}s for this copy
+     * @throws IOException any I/O error during copy
+     */
     public void copy(final FileEntry sourceFile,
                      final URI targetUri,
                      final DirectoryEntry targetDirectory,
@@ -148,7 +183,7 @@ public class FileServiceImpl extends BaseNeo4jfsService implements FileService {
 
     /**
      * Delete a file by URI
-     * @param uri Neo4Jfs file URI
+     * @param uri fully-qualified URI for Neo4Jfs file
      * @throws IOException if I/O fails during delete.
      */
     public void delete(final URI uri) throws IOException {
@@ -158,17 +193,23 @@ public class FileServiceImpl extends BaseNeo4jfsService implements FileService {
 
     /**
      * Delete a file by Neo4J node ID
-     * @param uri URI at minimum specifies partition
+     * @param fsUri Neo4Jfs files system URI
      * @param nodeId node ID of FileEntry to delete
      * @throws IOException thrown when delete fails, most like StorageManager but could be for other reasons
      */
     @Override
-    public void delete(final URI uri, final String nodeId) throws IOException {
-        checkUri(uri);
-        FileEntry file = repository.load(uri, nodeId);
-        deleteWork(uri, file);
+    public void delete(final URI fsUri, final String nodeId) throws IOException {
+        checkUri(fsUri);
+        FileEntry file = repository.load(fsUri, nodeId);
+        deleteWork(fsUri, file);
     }
 
+    /**
+     * Create input stream for reading persisted file.
+     * @param uri fully-qualified URI for file to read
+     * @return InputStream for reading file contents
+     * @throws IOException if I/O fails during read.
+     */
     public InputStream getInputStream(final URI uri) throws IOException {
         checkUri(uri);
         FileEntry fe = prologueExistingFile(uri, false);
@@ -176,6 +217,12 @@ public class FileServiceImpl extends BaseNeo4jfsService implements FileService {
         return storageManager.getFileInputStream(uri, fe.getStorageId());
     }
 
+    /**
+     * Create output stream for writing to file persisted in Storage Manager
+     * @param uri fully-qualified URI for file to write to
+     * @return OutputStream for writing file contents
+     * @throws IOException if I/O fails during write.
+     */
     public OutputStream getOutputStream(final URI uri) throws IOException {
         FileEntry fe = prologueExistingFile(uri, true);
         OutputStream os = storageManager.getFileOutputStream(uri, fe.getStorageId());

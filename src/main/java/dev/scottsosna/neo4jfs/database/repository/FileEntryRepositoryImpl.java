@@ -7,15 +7,33 @@ import org.springframework.stereotype.Component;
 
 import java.net.URI;
 
+/**
+ * {@link FileEntryRepository} interfacee for managing files in Neo4J.
+ */
 @Component
 public class FileEntryRepositoryImpl extends BaseEntryRepositoryImpl implements FileEntryRepository {
 
-    public FileEntryRepositoryImpl(Neo4jfsConfiguration config) {
+    /**
+     * Constructor
+     * @param config N3o4Jfs configuration bean
+     */
+    public FileEntryRepositoryImpl(final Neo4jfsConfiguration config) {
         super(config);
     }
 
+    /**
+     * Create a new file entry
+     * @param fsUri Neo4Jfs base URI
+     * @param name file name
+     * @param storageId ID for file as stored in Storage Manager
+     * @param size size of the file.
+     * @return persisted FileEntry
+     */
     @Override
-    public FileEntry create(URI uri, String name, String storageId, long size) {
+    public FileEntry create(final URI fsUri,
+                            final String name,
+                            final String storageId,
+                            final long size) {
 
         //  Create the new file entry and persist.
         FileEntry f = new FileBuilder()
@@ -23,16 +41,28 @@ public class FileEntryRepositoryImpl extends BaseEntryRepositoryImpl implements 
             .setStorageId(storageId)
             .setSize(size)
             .build();
-        save(uri, f, FileEntry.class);
+        save(fsUri, f, FileEntry.class);
 
         return f;
     }
 
-    public boolean delete(URI uri, String fileNodeId) {
-        return deleteNodeById(uri, fileNodeId);
+    /**
+     * Delete a file entry by its Neo4J node ID
+     * @param fsUri Neo4Jfs base URI
+     * @param fileNodeId Neo4J node ID of the file entry to delete
+     * @return true if deleted, false otherwise.
+     */
+    public boolean delete(final URI fsUri, final String fileNodeId) {
+        return deleteNodeById(fsUri, fileNodeId);
     }
 
-    public FileEntry load(URI uri, String fileNodeId) {
-        return load(uri, fileNodeId, FileEntry.class);
+    /**
+     * Load the specific file by its Neo4J node ID.
+     * @param fsUri Neo4J base URI
+     * @param fileNodeId Neo4J node ID of the file to load
+     * @return FileEntry returned from database
+     */
+    public FileEntry load(final URI fsUri, final String fileNodeId) {
+        return load(fsUri, fileNodeId, FileEntry.class);
     }
 }

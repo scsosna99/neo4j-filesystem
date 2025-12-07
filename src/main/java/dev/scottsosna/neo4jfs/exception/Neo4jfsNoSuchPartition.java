@@ -1,7 +1,7 @@
 package dev.scottsosna.neo4jfs.exception;
 
 /**
- * Requested Storage Manager partitiono does not exist.
+ * Expected/requested Storage Manager partition does not exist.
  */
 public class Neo4jfsNoSuchPartition extends Neo4jfsException {
 

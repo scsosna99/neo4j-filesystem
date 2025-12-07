@@ -79,7 +79,9 @@ public class BaseEntryRepositoryImpl {
      * @param childNodeName name of the child node desired
      * @return the child node, when found, or null.
      */
-    public BaseEntry findNamedChild(URI fsUri, String directoryNodeId, String childNodeName) {
+    public BaseEntry findNamedChild(final URI fsUri,
+                                    final String directoryNodeId,
+                                    final String childNodeName) {
         Map<String,Object> params = Map.of("id", directoryNodeId, "name", childNodeName);
         List<BaseEntry> entries = query(fsUri, QUERY_DIRECTORY_AND_CHILD, params, BaseEntry.class);
         return (entries.isEmpty() ? null : entries.get(1));
@@ -92,7 +94,9 @@ public class BaseEntryRepositoryImpl {
      * @param entry entry to be persisted
      * @param clazz specific class of entry, e.g. DirectoryEntry or FileEntry
      */
-    public <T extends BaseEntry> void save(URI uri, T entry, Class<T> clazz) {
+    public <T extends BaseEntry> void save(final URI uri,
+                                           final T entry,
+                                           final Class<T> clazz) {
         updateTimestamps(entry);
         getSessionFactory(uri).openSession().save(entry);
     }
@@ -104,7 +108,9 @@ public class BaseEntryRepositoryImpl {
      * @param startId start node from which outgoing relationship is to be removed
      * @param endId end node whose incoming relationship is to be removed
      */
-    public void deleteRelationship(final URI uri, final String startId, final String endId) {
+    public void deleteRelationship(final URI uri,
+                                   final String startId,
+                                   final String endId) {
         getSessionFactory(uri).openSession().query(QUERY_DELETE_RELATIONSHIP, Map.of("startId", startId, "endId", endId));
     }
 
@@ -117,7 +123,9 @@ public class BaseEntryRepositoryImpl {
      * @param entry entry to have its last accessed timestamp updated
      */
     @Async
-    public void updateLastAccessed(URI uri, BaseEntry entry, Class<? extends BaseEntry> clazz) {
+    public void updateLastAccessed(final URI uri,
+                                   final BaseEntry entry,
+                                   final Class<? extends BaseEntry> clazz) {
         Session session = getSessionFactory(uri).openSession();
         BaseEntry loaded = session.load(clazz, entry.getId());
         loaded.setLastAccessed(Instant.now());
@@ -131,7 +139,7 @@ public class BaseEntryRepositoryImpl {
      * @param uri URI for the file system
      * @return session factory
      */
-    protected SessionFactory getSessionFactory(URI uri) {
+    protected SessionFactory getSessionFactory(final URI uri) {
         return sessionFactory(uri.getHost());
     }
 
@@ -143,7 +151,9 @@ public class BaseEntryRepositoryImpl {
      * @param clazz the class of the object to load
      * @return the loaded object
      */
-    protected <T extends BaseEntry> T load(URI uri, String nodeId, Class<T> clazz) {
+    protected <T extends BaseEntry> T load(final URI uri,
+                                           final String nodeId,
+                                           final Class<T> clazz) {
         return getSessionFactory(uri).openSession().load(clazz, nodeId);
     }
 
@@ -153,7 +163,7 @@ public class BaseEntryRepositoryImpl {
      * @param dbName database for which session factory is required
      * @return session factory for database.
      */
-    private SessionFactory sessionFactory(String dbName) {
+    private SessionFactory sessionFactory(final String dbName) {
         //  Has session factory been previously created?
         var sf = sessionFactories.get(dbName);
         if (sf == null) {
@@ -173,7 +183,7 @@ public class BaseEntryRepositoryImpl {
      * @param dbName database name to connect to
      * @return built configuration
      */
-    private Configuration buildConfiguration(String dbName) {
+    private Configuration buildConfiguration(final String dbName) {
         return new Configuration.Builder()
             .uri(config.neo4jUri)
             .credentials(config.neo4jUsername, config.neo4jPassword)
@@ -189,7 +199,7 @@ public class BaseEntryRepositoryImpl {
      * @param nodeId identifies node to be deleted.
      * @return true if successfully deleted, false otherwise.
      */
-    protected boolean deleteNodeById(URI fsUri, String nodeId) {
+    protected boolean deleteNodeById(final URI fsUri, final String nodeId) {
         Result r = getSessionFactory(fsUri).openSession().query(QUERY_DELETE_NODE, Map.of("id", nodeId));
         return r.queryStatistics().getNodesDeleted() > 0;
     }
@@ -203,7 +213,10 @@ public class BaseEntryRepositoryImpl {
      * @param clazz specific class of objects being returned
      * @return list of 0 or more objects of type clazz
      */
-    protected <T> List<T> query(URI fsUri, String query, Map<String,Object> parameters, Class<T> clazz) {
+    protected <T> List<T> query(final URI fsUri,
+                                final String query,
+                                final Map<String,Object> parameters,
+                                final Class<T> clazz) {
         var results = getSessionFactory(fsUri).openSession().query(clazz, query, parameters);
         return StreamSupport.stream(results.spliterator(), false).toList();
     }
@@ -216,7 +229,9 @@ public class BaseEntryRepositoryImpl {
      * @param clazz specific class of objects being returned
      * @return list of 0 or more objects of type clazz
      */
-    protected <T> List<T> query(URI uri,String query, Class<T> clazz) {
+    protected <T> List<T> query(final URI uri,
+                                final String query,
+                                final Class<T> clazz) {
         return query(uri, query, Map.of(), clazz);
     }
 
@@ -226,7 +241,7 @@ public class BaseEntryRepositoryImpl {
      * @param parameters parameters used as substitution parameters
      * @return raw Neo4J OGM results
      */
-    protected Result query(String command, Map<String,String> parameters) {
+    protected Result query(final String command, final Map<String,String> parameters) {
         return defaultSessionFactory.openSession().query(command, parameters);
     }
 
@@ -235,7 +250,7 @@ public class BaseEntryRepositoryImpl {
      * @param command Neo4J command to execute, e.g. SHOW DATABASE, CREATE DATABASE, etc.
      * @return raw Neo4J OGM results.
      */
-    protected Result query(String command) {
+    protected Result query(final String command) {
         return query(command, Map.of());
     }
 
@@ -247,11 +262,11 @@ public class BaseEntryRepositoryImpl {
      * @param entryName entry name to match
      * @param index depth of navigation, used for parameter names and return
      */
-    protected void addMatchEntry(StringBuilder sbMatch,
-                                 StringBuilder sbReturn,
-                                 Map<String,Object> queryParams,
-                                 String entryName,
-                                 int index) {
+    protected void addMatchEntry(final StringBuilder sbMatch,
+                                 final StringBuilder sbReturn,
+                                 final Map<String,Object> queryParams,
+                                 final String entryName,
+                                 final int index) {
         addMatchWork(sbMatch, sbReturn, queryParams, entryName, index, RELATIONSHIP_ENTRY, MATCH_ENTRY);
     }
 
@@ -263,11 +278,11 @@ public class BaseEntryRepositoryImpl {
      * @param entryName entry name to match
      * @param index depth of navigation, used for parameter names and return
      */
-    protected void addMatchEntryOptional(StringBuilder sbMatch,
-                                         StringBuilder sbReturn,
-                                         Map<String,Object> queryParams,
-                                         String entryName,
-                                         int index) {
+    protected void addMatchEntryOptional(final StringBuilder sbMatch,
+                                         final StringBuilder sbReturn,
+                                         final Map<String,Object> queryParams,
+                                         final String entryName,
+                                         final int index) {
         addMatchWork(sbMatch, sbReturn, queryParams, entryName, index, RELATIONSHIP_ENTRY_OPTIONAL, MATCH_ENTRY);
     }
 
@@ -279,11 +294,11 @@ public class BaseEntryRepositoryImpl {
      * @param entryName entry name to match
      * @param index depth of navigation, used for parameter names and return
      */
-    protected void addMatchFile(StringBuilder sbMatch,
-                                StringBuilder sbReturn,
-                                Map<String,Object> queryParams,
-                                String entryName,
-                                int index) {
+    protected void addMatchFile(final StringBuilder sbMatch,
+                                final StringBuilder sbReturn,
+                                final Map<String,Object> queryParams,
+                                final String entryName,
+                                final int index) {
         addMatchWork(sbMatch, sbReturn, queryParams, entryName, index, RELATIONSHIP_LINK_FILE, MATCH_FILE);
     }
 
@@ -295,11 +310,11 @@ public class BaseEntryRepositoryImpl {
      * @param entryName entry name to match
      * @param index depth of navigation, used for parameter names and return
      */
-    protected void addMatchFileOptional(StringBuilder sbMatch,
-                                        StringBuilder sbReturn,
-                                        Map<String,Object> queryParams,
-                                        String entryName,
-                                        int index) {
+    protected void addMatchFileOptional(final StringBuilder sbMatch,
+                                        final StringBuilder sbReturn,
+                                        final Map<String,Object> queryParams,
+                                        final String entryName,
+                                        final int index) {
         addMatchWork(sbMatch, sbReturn, queryParams, entryName, index, RELATIONSHIP_LINK_FILE_OPTIONAL, MATCH_FILE);
     }
 
@@ -313,13 +328,13 @@ public class BaseEntryRepositoryImpl {
      * @param relationship Neo4J Cypher string for the relationship
      * @param endNode Neo4J Cypher string for the ending node
      */
-    private void addMatchWork(StringBuilder sbMatch,
-                              StringBuilder sbReturn,
-                              Map<String,Object> queryParams,
-                              String entryName,
-                              int index,
-                              String relationship,
-                              String endNode) {
+    private void addMatchWork(final StringBuilder sbMatch,
+                              final StringBuilder sbReturn,
+                              final Map<String,Object> queryParams,
+                              final String entryName,
+                              final int index,
+                              final String relationship,
+                              final String endNode) {
         sbMatch
             //  needed for 'OPTIONAL MATCH' but not run of the mill so sometimes fomatting does nothing, looks weird
             .append(relationship.formatted(index - 1))
@@ -333,7 +348,7 @@ public class BaseEntryRepositoryImpl {
      * therefore all timestamps set; otherwise just set last modified.
      * @param entry
      */
-    private void updateTimestamps (BaseEntry entry) {
+    private void updateTimestamps (final BaseEntry entry) {
         Instant now = Instant.now();
         if (entry.getCreated() == null) {
             entry.setCreated(now);

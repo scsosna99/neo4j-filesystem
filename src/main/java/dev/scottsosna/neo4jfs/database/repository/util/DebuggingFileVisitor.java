@@ -58,11 +58,12 @@ public class DebuggingFileVisitor extends SimpleFileVisitor<Neo4jfsTreeWalker.Ne
      * @throws IOException thrown when file cannot be processed
      */
     @Override
-    public FileVisitResult visitFile(Neo4jfsTreeWalker.NeofjfsWalkerEvent file, BasicFileAttributes attrs)
+    public FileVisitResult visitFile(final Neo4jfsTreeWalker.NeofjfsWalkerEvent file,
+                                     final BasicFileAttributes attrs)
         throws IOException
     {
         depth++;
-        logger.debug(SLF4J_FORMAT, indent(depth), "FILE", file.getUri());
+        logger.debug(SLF4J_FORMAT, indent(depth), "* ", file.uri());
         depth--;
         return FileVisitResult.CONTINUE;
     }
@@ -74,9 +75,10 @@ public class DebuggingFileVisitor extends SimpleFileVisitor<Neo4jfsTreeWalker.Ne
      * @throws IOException thrown when directory cannot be exited
      */
     @Override
-    public FileVisitResult preVisitDirectory(Neo4jfsTreeWalker.NeofjfsWalkerEvent dir, BasicFileAttributes attrs) throws IOException{
+    public FileVisitResult preVisitDirectory(final Neo4jfsTreeWalker.NeofjfsWalkerEvent dir,
+                                             final BasicFileAttributes attrs) throws IOException{
         depth++;
-        logger.debug(SLF4J_FORMAT, indent(depth), "--->", dir.getUri());
+        logger.debug(SLF4J_FORMAT, indent(depth), "---> ", dir.uri());
         return FileVisitResult.CONTINUE;
     }
 
@@ -88,11 +90,11 @@ public class DebuggingFileVisitor extends SimpleFileVisitor<Neo4jfsTreeWalker.Ne
      * @throws IOException thrown when directory cannot be exited
      */
     @Override
-    public FileVisitResult postVisitDirectory(Neo4jfsTreeWalker.NeofjfsWalkerEvent dir, IOException e)
+    public FileVisitResult postVisitDirectory(final Neo4jfsTreeWalker.NeofjfsWalkerEvent dir,
+                                              final IOException e)
         throws IOException
     {
         if (e == null) {
-            logger.debug(SLF4J_FORMAT, indent(depth), "<---", dir.getUri());
             depth--;
             return FileVisitResult.CONTINUE;
         } else {
@@ -104,7 +106,7 @@ public class DebuggingFileVisitor extends SimpleFileVisitor<Neo4jfsTreeWalker.Ne
     /**
      * @return leading spaces based on depth.
      */
-    private static String indent(int depth) {
+    private static String indent(final int depth) {
         return (depth < LEADING_SPACES.length) ? LEADING_SPACES[depth] : LEADING_SPACES[LEADING_SPACES.length - 1];
     }
 }

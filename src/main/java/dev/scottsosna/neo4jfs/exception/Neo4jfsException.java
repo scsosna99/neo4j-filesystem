@@ -3,7 +3,7 @@ package dev.scottsosna.neo4jfs.exception;
 import java.io.IOException;
 
 /**
- * Base Neo4Jfs exception.
+ * Base Neo4Jfs exception to handle when Java NIO doesn't have something appropriate.
  */
 public class Neo4jfsException extends IOException {
     public Neo4jfsException() {

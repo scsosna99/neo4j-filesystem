@@ -4,17 +4,32 @@ import dev.scottsosna.neo4jfs.config.Neo4jfsConstants;
 
 import java.nio.file.FileStore;
 
+/**
+ * Neo4Jfs implementation of {@link FileStore}.  The files are persisted/stored in the specific Storage Mnaager instance
+ * from which the details will be derived.  This is just the abstract class with the Neo4Jfs specifics
+ */
 abstract public class Neo4jfsFileStore extends FileStore {
+
+    /**
+     * @return the name of the file store.
+     */
     @Override
     public String name() {
         return "";
     }
 
+    /**
+     * @return the file store type, which is "neo4jfs".
+     */
     @Override
     public String type() {
         return Neo4jfsConstants.NEO4JFS_URI_SCHEME;
     }
 
+    /**
+     * Neo4Jfs file stores are always read/write.
+     * @return false
+     */
     @Override
     public boolean isReadOnly() {
         return false;

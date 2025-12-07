@@ -6,7 +6,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Proxies an output stream to allow post-close actions.
+ * Output stream proxy so interested parties can register callbacks to be executed upon close.
  */
 public class CallbackOutputStream extends OutputStream {
 
@@ -24,7 +24,7 @@ public class CallbackOutputStream extends OutputStream {
      * Constructor
      * @param os OutputStream to be proxied.
      */
-    public CallbackOutputStream(OutputStream os) {
+    public CallbackOutputStream(final OutputStream os) {
         this.delegate = os;
     }
 
@@ -32,7 +32,7 @@ public class CallbackOutputStream extends OutputStream {
      * Add callback to be executed upon close.
      * @param callback Runnable to be executed.
      */
-    public void registerCallback(Runnable callback) {
+    public void registerCallback(final Runnable callback) {
         callbacks.add(callback);
     }
 

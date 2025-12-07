@@ -11,7 +11,7 @@ import java.util.Map;
 import java.util.stream.StreamSupport;
 
 /**
- * Functionality for managing Neo4J databases.  Note that"databases are not graph objects, so
+ * Functionality for managing Neo4J databases.  Note that "databases" are not graph objects, so
  * commands not Cypher queries are used.
  */
 @Component
@@ -30,7 +30,7 @@ public class DatabaseRepositoryImpl extends BaseEntryRepositoryImpl implements D
      * Constructor
      * @param config configuration bean hold Neo4J connection and authentication credentials.
      */
-    public DatabaseRepositoryImpl(Neo4jfsConfiguration config) {
+    public DatabaseRepositoryImpl(final Neo4jfsConfiguration config) {
         super(config);
     }
 
@@ -41,7 +41,7 @@ public class DatabaseRepositoryImpl extends BaseEntryRepositoryImpl implements D
      * @return database just created
      */
     @Override
-    public Database create(URI fsUri) {
+    public Database create(final URI fsUri) {
         String dbName = fsUri.getHost();
         query(CREATE_DATABASE, Map.of(PARAMETER_DATABASE, dbName));
         return find(dbName);
@@ -52,7 +52,7 @@ public class DatabaseRepositoryImpl extends BaseEntryRepositoryImpl implements D
      *
      * @param fsUri Neo4J file system URI for the database to be dropped
      */
-    public void drop(URI fsUri) {
+    public void drop(final URI fsUri) {
         query(DROP_DATABASE, Map.of(PARAMETER_DATABASE, fsUri.getHost()));
     }
 
@@ -63,7 +63,7 @@ public class DatabaseRepositoryImpl extends BaseEntryRepositoryImpl implements D
      * @return database found or null
      */
     @Override
-    public Database find(URI fsUri) {
+    public Database find(final URI fsUri) {
         return find(fsUri.getHost());
     }
 
@@ -74,7 +74,7 @@ public class DatabaseRepositoryImpl extends BaseEntryRepositoryImpl implements D
      * @return database found or null
      */
     @Override
-    public Database find(String dbName) {
+    public Database find(final String dbName) {
         Result r = query(SHOW_DATABASE, Map.of(PARAMETER_DATABASE, dbName));
         List<Database> dbs = deserialize(r);
         return (dbs.isEmpty() ? null : dbs.getFirst());
@@ -97,7 +97,7 @@ public class DatabaseRepositoryImpl extends BaseEntryRepositoryImpl implements D
      * @param r Query results
      * @return list of zero or more Database objects
      */
-    private List<Database> deserialize(Result r) {
+    private List<Database> deserialize(final Result r) {
         return StreamSupport.stream(r.spliterator(), false)
             .map(Database::new).
             toList();

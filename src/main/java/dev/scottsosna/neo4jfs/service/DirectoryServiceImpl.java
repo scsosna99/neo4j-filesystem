@@ -49,20 +49,20 @@ public class DirectoryServiceImpl extends BaseNeo4jfsService implements Director
 
     /**
      * Each file system needs a root '/' directory that is (somewhat) immutable
-     * @param fsUri Neo4Jfs URI for the specific partition
+     * @param fsUri Neo4Jfs URI for the file system (partition)
      * @return the newly-created root directory
      */
-    public DirectoryEntry createRoot (URI fsUri) {
+    public DirectoryEntry createRoot (final URI fsUri) {
         checkUri(fsUri);
         return repository.createRoot(fsUri);
     }
 
     /**
      * Create file system root '/' directory if one doesn't already exist
-     * @param fsUri Neo4Jfs URI for the specific partition
+     * @param fsUri Neo4Jfs URI for the file system (partition)
      * @return the root directory
      */
-    public DirectoryEntry findOrCreateRoot(URI fsUri) {
+    public DirectoryEntry findOrCreateRoot(final URI fsUri) {
         checkUri(fsUri);
         DirectoryEntry d = repository.findRoot(fsUri);
         if (d == null) {
@@ -73,12 +73,12 @@ public class DirectoryServiceImpl extends BaseNeo4jfsService implements Director
     }
 
     /**
-     * Create new directory in file system
-     * @param uri fully-qualified Neo4Jfs URI specifying directory to create
+     * Create new Neo4Jfs directory
+     * @param uri fully-qualified Neo4Jfs URI specifying subdirectory to create
      * @return the newly created directory
-     * @throws IOException I/O problem creating the new directory.
+     * @throws IOException I/O problem, such as parent directory doesn't exist.
      */
-    public DirectoryEntry mkdir (URI uri) throws IOException {
+    public DirectoryEntry mkdir (final URI uri) throws IOException {
         checkUri(uri);
 
         //  The parents of the new directory must exist, so query them from the database.
@@ -109,63 +109,50 @@ public class DirectoryServiceImpl extends BaseNeo4jfsService implements Director
     }
 
     /**
-     * Adds file to the existing directory.
-     * @param fsUri Neo4Jfs file system URI
-     * @param parent parent/containing directory of the file to add
-     * @param file file to add
-     * @return updated DirectoryEntry
+     * Returns {@code BaseEntry} nodes representing path from root to specific directory/file.
+     * @param uri fully-qualified Neo4Jfs URI specifying directory/file to find
+     * @return {@code BaseEntry} list representing the target path or empty list if path doesn't exist.
      */
-    public DirectoryEntry addFile(URI fsUri, DirectoryEntry parent, FileEntry file) {
+    public List<BaseEntry> find(final URI uri) {
+        checkUri(uri);
+        return repository.find(uri, Path.of(uri));
+    }
+
+    /**
+     * Return a directory with a paginated list of children (files, subdirectories)
+     * @param fsUri Neo4Jfs base URI
+     * @param directoryId Neo4J node ID for the specific directory
+     * @param skip pagination: how many children skipped
+     * @param limit pagination: how many children returned
+     * @return updated {@code DirectoryEntry} with children collections
+     */
+    public DirectoryEntry findChildren(final URI fsUri,
+                                       final String directoryId,
+                                       final int skip,
+                                       final int limit) {
         checkUri(fsUri);
-        parent.setFiles(List.of(file));
-        return repository.save(fsUri, parent);
+        return repository.getChildren(fsUri, directoryId, skip, limit);
+    }
+
+    public List<DirectoryEntry> findSubdirs(final URI fsUri,
+                                            final String directoryId,
+                                            final int skip,
+                                            final int limit) {
+        checkUri(fsUri);
+        return repository.getSubdirs(fsUri, directoryId, skip, limit);
     }
 
     /**
      * Copy file or directory to new location
      * @param sourceUri source file or directory to copy
-     * @param targetUri target location
+     * @param fsUri target location
      * @param options copy options
      * @throws IOException if an I/O error occurs.
      */
     @Override
-    public void copy(URI sourceUri, URI targetUri, CopyOption... options) throws IOException {
+    public void copy(URI sourceUri, URI fsUri, CopyOption... options) throws IOException {
         //  Prologue method does initial checks/validation before delegating to method to do actual work.
-        prologueCopyMove(sourceUri, targetUri, this::copyWork, options);
-    }
-
-    /**
-     * Delete node specified by URI, file or directory
-     * @param uri Neo4Jfs URI specifying either file or directory to delete.
-     * @throws IOException I/O errors such as unresolved pathname or delete failed.
-     */
-    public void delete(URI uri) throws IOException {
-
-        //  Get the requested pathname as ordered list of nodes.
-        List<BaseEntry> parts = prologue(uri);
-
-        //  Last part must be a directory.
-        BaseEntry lastPart = parts.getLast();
-        switch (lastPart) {
-            case FileEntry f:
-                fileService.delete(uri);
-                break;
-            case DirectoryEntry d:
-                rmdirWork(uri, lastPart);
-                break;
-            default:
-                throw new Neo4jfsUnknownEntryException(uri, lastPart.getClass().getName());
-        }
-    }
-
-    /**
-     * Check for file/directory exists
-     * @param uri Neo4Jfs URI for the directory or file to check
-     * @return true if exists, false otherwise.
-     */
-    public boolean exists(URI uri) {
-        checkUri(uri);
-        return repository.pathExists(uri);
+        prologueCopyMove(sourceUri, fsUri, this::copyWork, options);
     }
 
     /**
@@ -182,11 +169,21 @@ public class DirectoryServiceImpl extends BaseNeo4jfsService implements Director
     }
 
     /**
+     * Return the parent directory of the specified URI
+     * @param uri fully-qualified Neo4Jfs URI specifying directory/file to find parent of
+     * @return pagent directory
+     */
+    public BaseEntry parent(final URI uri) {
+        checkUri(uri);
+        return repository.parent(uri);
+    }
+
+    /**
      * Deletes an empty directory specified by URI, similar to *nix {@code rmdir} command.
-     * @param uri Neo4Jfs URI specifying directory to delete
+     * @param uri  Neo4Jfs URI specifying directory to delete
      * @throws IOException error occurred, such as directory not empty.
      */
-    public void rmdir(URI uri) throws IOException {
+    public void rmdir(final URI uri) throws IOException {
 
         //  Get the requested pathname as ordered list of nodes.
         List<BaseEntry> parts = prologue(uri);
@@ -199,9 +196,9 @@ public class DirectoryServiceImpl extends BaseNeo4jfsService implements Director
      * Walk directory from starting point specified by URI and deletes files/directories/everything
      * bottom-up, similar to *nix {@code rm -rf} command
      * @param uri Neo4Jfs URI for the directory or file to delete.
-     * @throws IOException I/O error occurred while deleting tree.
+     * @throws IOException I/O error occurred while deleting tree
      */
-    public void rmdirRecursively(URI uri) throws IOException {
+    public void rmdirRecursively(final URI uri) throws IOException {
 
         //  Get the requested pathname as ordered list of nodes.
         List<BaseEntry> parts = prologue(uri);
@@ -224,44 +221,68 @@ public class DirectoryServiceImpl extends BaseNeo4jfsService implements Director
     }
 
     /**
-     * Walks tree, dumping file structure to logger
-     * @param uri Neo4Jfs URI for the directory to dump
-     * @throws IOException I/O error occurred while walking tree
+     * Delete node specified by URI, file or directory
+     * @param uri Neo4Jfs URI specifying either file or directory to delete.
+     * @throws IOException I/O errors such file/directory doesn't exist or directory not empty.
      */
-    public void dumpTree(URI uri) throws IOException {
-        checkUri(uri);
-        walkFileTree(uri, new DebuggingFileVisitor());
+    public void delete(final URI uri) throws IOException {
+
+        //  Get the requested pathname as ordered list of nodes.
+        List<BaseEntry> parts = prologue(uri);
+
+        //  Last part must be a directory.
+        BaseEntry lastPart = parts.getLast();
+        switch (lastPart) {
+            case FileEntry f:
+                fileService.delete(uri);
+                break;
+            case DirectoryEntry d:
+                rmdirWork(uri, lastPart);
+                break;
+            default:
+                throw new Neo4jfsUnknownEntryException(uri, lastPart.getClass().getName());
+        }
     }
 
-    public BaseEntry parent(URI uri) {
+    /**
+     * Check whether directory/file specified exists,
+     * @param uri Neo4Jfs URI for the directory or file to check
+     * @return true if exists, false otherwise.
+     */
+    public boolean exists(final URI uri) {
         checkUri(uri);
-        return repository.parent(uri);
+        return repository.pathExists(uri);
     }
 
-    public List<BaseEntry> find(URI uri) {
-        checkUri(uri);
-        return repository.find(uri, Path.of(uri));
+    /**
+     * Add persisted file (FileEntry node) to its parent directory (DirectoryEntry node)
+     * @param fsUri Neo4Jfs file system URI
+     * @param directory parent/containing directory of the file to add
+     * @param fileToAdd file to add
+     * @return updated DirectoryEntry
+     */
+    public DirectoryEntry addFile(final URI fsUri,
+                                  final DirectoryEntry directory,
+                                  final FileEntry fileToAdd) {
+        checkUri(fsUri);
+        directory.setFiles(List.of(fileToAdd));
+        return repository.save(fsUri, directory);
     }
 
-    public DirectoryEntry findChildren(URI uri, String parentId, int skip, int limit) {
-        checkUri(uri);
-        return repository.getParentWithChildren(uri, parentId, skip, limit);
-    }
-
-    public List<FileEntry> findFiles(final URI uri,
-                                    final String parentId,
-                                    final int skip,
-                                    final int limit) {
-        checkUri(uri);
-        return repository.getFiles(uri, parentId, skip, limit);
-    }
-
-    public List<DirectoryEntry> findSubdirs(final URI uri,
-                                            final String parentId,
-                                            final int skip,
-                                            final int limit) {
-        checkUri(uri);
-        return repository.getSubdirs(uri, parentId, skip, limit);
+    /**
+     * Return a directory with a paginated list of subdirectories
+     * @param fsUri Neo4Jfs base URI
+     * @param directoryId Neo4J node ID for the specific directory
+     * @param skip pagination: how many subdirs skipped
+     * @param limit pagination: how many subdirs returned
+     * @return updated {@code DirectoryEntry} with children collections
+     */
+    public List<FileEntry> findFiles(final URI fsUri,
+                                     final String directoryId,
+                                     final int skip,
+                                     final int limit) {
+        checkUri(fsUri);
+        return repository.getFiles(fsUri, directoryId, skip, limit);
     }
 
     /**
@@ -271,7 +292,7 @@ public class DirectoryServiceImpl extends BaseNeo4jfsService implements Director
      * @return the attributes as a "view"
      * @throws IOException I/O error occurred while retrieving the entry to return
      */
-    public BasicFileAttributeView readAttributeView(URI uri, LinkOption... options) throws IOException {
+    public BasicFileAttributeView readAttributeView(final URI uri, final LinkOption... options) throws IOException {
         checkUri(uri);
         System.out.println("readAttributeView: %s".formatted(uri));
         return find(uri).getLast();
@@ -286,11 +307,11 @@ public class DirectoryServiceImpl extends BaseNeo4jfsService implements Director
      * @param options options for any linked entries
      * @throws IOException if I/O error occurs
      */
-    public void setAttribute(URI uri,
-                             String viewName,
-                             String attribute,
-                             Object value,
-                             LinkOption... options) throws IOException {
+    public void setAttribute(final URI uri,
+                             final String viewName,
+                             final String attribute,
+                             final Object value,
+                             final LinkOption... options) throws IOException {
         checkUri(uri);
         BaseEntry entry = find(uri).getLast();
 
@@ -308,10 +329,37 @@ public class DirectoryServiceImpl extends BaseNeo4jfsService implements Director
     }
 
     /**
-     * Check whether existing target (file or directory) can be overwritten during copy/merge
-     * @param fsUri Neo4Jfs file system URI
-     * @param target target entry of copy or move
-     * @param options copy options provided by caller
+     * Walks tree, dumping file structure to logger
+     * @param uri Neo4Jfs URI for the directory to dump
+     * @throws IOException I/O error occurred while walking tree
+     */
+    public void dumpTree(URI uri) throws IOException {
+        checkUri(uri);
+        walkFileTree(uri, new DebuggingFileVisitor());
+    }
+
+    /**
+     * Avoids circular references between FileService and DirectoryService by having FileService register itself.
+     * @param fs file service instance
+     */
+    public void registerFileService(final FileService fs) {
+        this.fileService = fs;
+    }
+
+    /**
+     * Some visitors are components which register themselves for simplified usage (e.g., no {@code new XYZFileVisitor()}
+     * @param key unique identifier for visitor
+     * @param visitor visitor instance.
+     */
+    public void registerVisitor(final String key, final FileVisitor visitor) {
+        visitorMap.put(key, visitor);
+    }
+
+    /**
+     * Determine if existing file/directory can be replaced during copy/merge
+     * @param fsUri base Neo4Jfs file system URI
+     * @param target target file/directory of move copy or move
+     * @param options copy options supplied by initial caller
      * @throws FileAlreadyExistsException target entry exists and cannot be overwritten.
      */
     private void checkForExisting(final URI fsUri,
@@ -332,7 +380,18 @@ public class DirectoryServiceImpl extends BaseNeo4jfsService implements Director
 
     }
 
-
+    /**
+     * Handles the workflow required for a copy, handling differences between files, directories, options, etc.
+     * @param sourceUri Neo4Jfs URI for source file or directory
+     * @param source {@@code BaseEntry} representing source file or directory
+     * @param sourceParent parent directory of file or directory to copy
+     * @param targetUri Neo4Jfs URI for target location of copy
+     * @param target {@code BaseEntry} representing target file or directory, which may be null.
+     * @param targetParent parent directory of copied file or directory, which must exist.
+     * @param targetName name to use for copied file or directory.
+     * @param options copy options supplied by initial caller.
+     * @throws IOException
+     */
     private void copyWork(final URI sourceUri,
                           final BaseEntry source,
                           final DirectoryEntry sourceParent,
@@ -369,8 +428,7 @@ public class DirectoryServiceImpl extends BaseNeo4jfsService implements Director
     }
 
     /**
-     * Do actual moving of source to target, whatever that may be.
-     *
+     Handles the workflow required for a move, handling differences between files, directories, options, etc.
      * @param source source file or directory to move
      * @param sourceParent source parent directory
      * @param target target of maove, which may be null
@@ -422,35 +480,34 @@ public class DirectoryServiceImpl extends BaseNeo4jfsService implements Director
     }
 
     /**
-     * Initial steps for a number of operations where the tree is required before proceeding
+     * Initial steps for multiple options, ensuring correct URI and file/directory specified exists
      * @param uri Neo4Jfs URI for the directory path on which to operate
      * @return the nodes representing the path.
      * @throws IOException if the path doesn't exist.
      */
-    private List<BaseEntry> prologue(URI uri) throws IOException{
+    private List<BaseEntry> prologue(final URI uri) throws IOException{
         checkUri(uri);
 
         //  Confirm path existence.
-        List<BaseEntry> parts = find(uri);
-        if (parts.isEmpty()) {
+        List<BaseEntry> pathParts = find(uri);
+        if (pathParts.isEmpty()) {
             throw new NoSuchFileException("%s: no such file or directory".formatted(uri));
         }
 
-        return parts;
+        return pathParts;
     }
 
     /**
-     * Initial steps required before getting into guts of a copy or move operation.
+     * Initial steps executed for both copy and move operations.
      * @param sourceUri source file or directory
      * @param targetUri target file of directory
      * @param options copy options to apply (to either)
-     * @return target path.
      * @throws IOException if an I/O error occurs.
      */
     private void prologueCopyMove(URI sourceUri,
                                   URI targetUri,
-                                  CopyMoveConsumer workMethod,
-                                  CopyOption... options) throws IOException {
+                                  final CopyMoveConsumer workMethod,
+                                  final CopyOption... options) throws IOException {
 
         //  Check scheme and normalize URIs.
         sourceUri = checkUri(sourceUri);
@@ -523,15 +580,15 @@ public class DirectoryServiceImpl extends BaseNeo4jfsService implements Director
     }
 
     /**
-     * Where the real work of deleting a directory happens
+     * Actual steps/guts for removing an existing directory.
      * @param uri file system's URI by specifying the partition
-     * @param lastPart the specific entry to delete
-     * @throws IOException not a directory, directory not empty, etc.
+     * @param shouldBeDirectory directory to delete
+     * @throws IOException I/O error such as not a directory, directory not empty, etc.
      */
-    private void rmdirWork(URI uri, BaseEntry lastPart) throws IOException {
+    private void rmdirWork(final URI uri, final BaseEntry shouldBeDirectory) throws IOException {
 
         //  By this point, must be a directory to proceed.
-        if (lastPart instanceof DirectoryEntry d) {
+        if (shouldBeDirectory instanceof DirectoryEntry d) {
 
             //  Root directory cannot be deleted.
             if (d.isRoot()) {
@@ -539,11 +596,11 @@ public class DirectoryServiceImpl extends BaseNeo4jfsService implements Director
             }
 
             //  Only empty directories are deleted/removed.
-            DirectoryEntry entry = repository.getParentWithChildren(uri, lastPart.getId(), 0, 2);
+            DirectoryEntry entry = repository.getChildren(uri, shouldBeDirectory.getId(), 0, 2);
             if (entry == null ||
                 ((entry.getFiles() == null || entry.getFiles().isEmpty()) &&
                     (entry.getSubdirs() == null || entry.getSubdirs().isEmpty()))) {
-                repository.delete(uri, lastPart.getId());
+                repository.delete(uri, shouldBeDirectory.getId());
             } else {
                 throw new DirectoryNotEmptyException(uri.toString());
             }
@@ -553,15 +610,15 @@ public class DirectoryServiceImpl extends BaseNeo4jfsService implements Director
     }
 
     /**
-     * Updates entry for attributes in the basic view
+     * Updates entry for "basic" view attributes
      * @param entryToUpdate entry to update
      * @param attribute attribute name to modify
-     * @param value new attribute values
+     * @param value new attribute value
      * @throws IOException
      */
-    private void setAttributeBasic(BaseEntry entryToUpdate,
-                                   String attribute,
-                                   Object value) throws IOException {
+    private void setAttributeBasic(final BaseEntry entryToUpdate,
+                                   final String attribute,
+                                   final Object value) throws IOException {
 
         switch (attribute) {
             case BASIC_ATTRIBUTE_CREATE_TIME:
@@ -594,20 +651,18 @@ public class DirectoryServiceImpl extends BaseNeo4jfsService implements Director
     }
 
     /**
-     * Walk the Neo4J file system tree and apply the visitor to each node (file, directory, etc)
-     * based on the event type
+     * Walks the Neo4Jfs tree and applies the visitor to each entry (file, directory, etc), based on the event type
      * @param uri starting point in tree
      * @param visitor visitor to apply to each node
      */
-    private void walkFileTree(URI uri, FileVisitor<Neo4jfsTreeWalker.NeofjfsWalkerEvent> visitor) throws IOException {
-        checkUri(uri);
+    private void walkFileTree(final URI uri,
+                              final FileVisitor<Neo4jfsTreeWalker.NeofjfsWalkerEvent> visitor) throws IOException {
 
         var attribs = new Neo4jfsFileAttributes();
-
         try (var walker = new Neo4jfsTreeWalker(repository)) {
             var env = walker.walk(uri);
             do {
-                switch (env.getEventType()) {
+                switch (env.eventType()) {
                     case FILE:
                         visitor.visitFile(env, attribs);
                         break;
@@ -621,35 +676,20 @@ public class DirectoryServiceImpl extends BaseNeo4jfsService implements Director
                         break;
                 }
                 env = walker.next(env);
-            } while (env.getEventType() != Neo4jfsTreeWalker.EventType.FINISHED);
+            } while (env.eventType() != Neo4jfsTreeWalker.EventType.FINISHED);
         }
     }
 
     /**
-     * Walk the Neo4J file system tree and apply the visitor to each node (file, directory, etc)
-     * based on the event type
+     * Retrieves a visitor specified by name and then walks the Neo4Jfs tree using that visitor.
      * @param uri starting point in tree
      * @param fileVisitorKey key for finding registered visitor
      */
-    private void walkFileTree(URI uri, String fileVisitorKey) throws IOException {
-        checkUri(uri);
+    private void walkFileTree(final URI uri, final String fileVisitorKey) throws IOException {
+        var visitor = visitorMap.get(fileVisitorKey);
+        if (visitor == null) {
+            throw new IllegalArgumentException("No visitor registered for key: %s".formatted(fileVisitorKey));
+        }
         walkFileTree(uri, visitorMap.get(fileVisitorKey));
-    }
-
-    /**
-     * Some visitors are components which register themselves for simplified usage (e.g., no {@code new XYZFileVisitor()}
-     * @param key unique identifier for visitor
-     * @param visitor visitor instance.
-     */
-    public void registerVisitor(final String key, final FileVisitor visitor) {
-        visitorMap.put(key, visitor);
-    }
-
-    /**
-     * Avoids circular references between FileService and DirectoryService by having FileService register itself.
-     * @param fileService
-     */
-    public void registerFileService(final FileService fileService) {
-        this.fileService = fileService;
     }
 }

@@ -3,11 +3,11 @@ package dev.scottsosna.neo4jfs.filesystem;
 import java.nio.file.CopyOption;
 
 /**
- * Copy options specific to Neo4Jfs
+ * Neo4Jfs-specific copy options
  */
 public enum Neo4jfsCopyOption implements CopyOption {
     /**
-     * Deep directory copy.
+     * Copying a directory should recurse and copy all subdirectories.
      */
     RECURVSIVE_COPY
 }

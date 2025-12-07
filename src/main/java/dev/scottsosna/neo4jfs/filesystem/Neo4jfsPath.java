@@ -32,7 +32,7 @@ public class Neo4jfsPath implements Path {
      * @param fs Neo4Jfs file system for this path.
      * @param path The detailed path within the file system.
      */
-    public Neo4jfsPath(FileSystem fs, Path path) {
+    public Neo4jfsPath(final FileSystem fs, final Path path) {
         this.fs = (Neo4jFileSystem) fs;
         this.pathString = path.toString();
         this.path = path;
@@ -43,7 +43,7 @@ public class Neo4jfsPath implements Path {
      * @param fs Neo4Jfs file system for this path.
      * @param path The detailed path within the file system.
      */
-    public Neo4jfsPath(FileSystem fs, String path) {
+    public Neo4jfsPath(final FileSystem fs, final String path) {
         this.fs = (Neo4jFileSystem) fs;
         this.pathString = path;
         this.path = Path.of(path);
@@ -269,7 +269,6 @@ public class Neo4jfsPath implements Path {
     }
 
     /**
-     * Returns the string representation of this path.
      * @return the string representation of this path
      */
     @Override

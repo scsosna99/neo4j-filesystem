@@ -65,7 +65,7 @@ public class Neo4jfsDirectoryStream implements DirectoryStream<Path>, AutoClosea
      */
     public Neo4jfsDirectoryStream(final Path path) throws IOException {
         this.service = SpringContext.getBean(DirectoryService.class);
-        this.paginationMaxPerCall = SpringContext.getConfigurationProperty(NEO4JFS_PROPERTY_PAGINATION_SIZE);
+        this.paginationMaxPerCall = SpringContext.getPropertyInteger(NEO4JFS_PROPERTY_PAGINATION_SIZE);
 
         //  Make sure the path exists.
         this.uri = path.toUri();

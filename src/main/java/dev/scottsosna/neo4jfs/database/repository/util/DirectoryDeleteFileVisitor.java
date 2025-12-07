@@ -34,7 +34,7 @@ public class DirectoryDeleteFileVisitor extends SimpleFileVisitor<Neo4jfsTreeWal
     public FileVisitResult visitFile(Neo4jfsTreeWalker.NeofjfsWalkerEvent file, BasicFileAttributes attrs)
         throws IOException
     {
-        fileService.delete(file.getUri());
+        fileService.delete(file.uri());
         return FileVisitResult.CONTINUE;
     }
 
@@ -50,7 +50,7 @@ public class DirectoryDeleteFileVisitor extends SimpleFileVisitor<Neo4jfsTreeWal
         throws IOException
     {
         if (e == null) {
-            directoryService.rmdir(dir.getUri());
+            directoryService.rmdir(dir.uri());
             return FileVisitResult.CONTINUE;
         } else {
             // directory iteration failed

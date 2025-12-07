@@ -1,7 +1,7 @@
 package dev.scottsosna.neo4jfs.exception;
 
 /**
- * Neo4Jfs exception signalling database problems.
+ * Neo4Jfs exception indicating database problems of some sort.
  */
 public class Neo4jfsDatabaseException extends Neo4jfsException {
     public Neo4jfsDatabaseException() {
