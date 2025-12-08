@@ -1,8 +1,6 @@
 package dev.scottsosna.neo4jfs.filesystem;
 
-import dev.scottsosna.neo4jfs.config.Neo4jfsConfiguration;
 import dev.scottsosna.neo4jfs.config.Neo4jfsConstants;
-import dev.scottsosna.neo4jfs.service.DirectoryService;
 import lombok.Getter;
 
 import java.io.IOException;

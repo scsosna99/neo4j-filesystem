@@ -7,7 +7,6 @@ import dev.scottsosna.neo4jfs.database.node.FileEntry;
 import dev.scottsosna.neo4jfs.database.repository.DirectoryEntryRepository;
 import dev.scottsosna.neo4jfs.exception.Neo4jfsException;
 import dev.scottsosna.neo4jfs.exception.Neo4jfsUnknownEntryException;
-import dev.scottsosna.neo4jfs.service.DirectoryService;
 import dev.scottsosna.neo4jfs.util.SpringContext;
 
 import java.io.Closeable;

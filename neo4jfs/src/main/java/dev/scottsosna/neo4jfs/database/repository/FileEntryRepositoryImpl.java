@@ -1,8 +1,6 @@
 package dev.scottsosna.neo4jfs.database.repository;
 
 import dev.scottsosna.neo4jfs.config.Neo4jfsConfiguration;
-import dev.scottsosna.neo4jfs.database.node.DirectoryEntry;
-import dev.scottsosna.neo4jfs.database.node.FileBuilder;
 import dev.scottsosna.neo4jfs.database.node.FileEntry;
 import org.springframework.stereotype.Component;
 

@@ -1,6 +1,5 @@
 package dev.scottsosna.neo4jfs.database.node;
 
-import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;

@@ -1,10 +1,9 @@
 package dev.scottsosna.neo4jfs.storage;
 
-import dev.scottsosna.neo4jfs.config.Neo4jfsConstants;
 import dev.scottsosna.neo4jfs.database.model.storage.StorageFileInfo;
 import dev.scottsosna.neo4jfs.exception.Neo4jfsNoSuchPartition;
-import dev.scottsosna.neo4jfs.service.util.LocalStorageTreeDeleteVisitor;
 import dev.scottsosna.neo4jfs.service.util.CallbackOutputStream;
+import dev.scottsosna.neo4jfs.service.util.LocalStorageTreeDeleteVisitor;
 import dev.scottsosna.neo4jfs.storage.util.LocalStorageFileStore;
 import jakarta.annotation.PostConstruct;
 import org.slf4j.Logger;
