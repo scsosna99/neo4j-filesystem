@@ -10,14 +10,7 @@ import java.util.List;
 
 public interface DirectoryEntryRepository extends BaseEntryRepository {
 
-    /**
-     * Create new directory entry and persist to Neo4J
-     *
-     * @param fsUri Neo4Jfs file system URI
-     * @param name directory name
-     * @return newly-created directory
-     */
-    DirectoryEntry create(final URI fsUri, final String name);
+    DirectoryEntry create (final URI fsUri, final DirectoryEntry toCreate, final DirectoryEntry parent);
 
     /**
      * Create new root directory for database/filesystem

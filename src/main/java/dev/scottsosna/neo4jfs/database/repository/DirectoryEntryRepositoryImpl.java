@@ -50,19 +50,19 @@ public class DirectoryEntryRepositoryImpl extends BaseEntryRepositoryImpl implem
     }
 
     /**
-     * Create new directory entry and persist to Neo4J
+     * Persist new directory to Neo4J and assign as subdir to parent directory.
      * @param fsUri Neo4Jfs file system URI
-     * @param name directory name
-     * @return newly-created directory
+     * @param toCreate directory being created/persisted
+     * @param parent parent directory of newly-created subdirectory
+     * @return directory just created (e.g., it'll have a node id and timestamps updated)
      */
-    public DirectoryEntry create(final URI fsUri, final String name) {
-        DirectoryEntry d = new DirectoryBuilder()
-            .name(name)
-            .root(false)
-            .build();
-        save(fsUri, d, DirectoryEntry.class);
-
-        return d;
+    public DirectoryEntry create (final URI fsUri,
+                                  final DirectoryEntry toCreate,
+                                  final DirectoryEntry parent) {
+        save(fsUri, toCreate, DirectoryEntry.class);
+        parent.setSubdirs(List.of(toCreate));
+        save(fsUri, parent, DirectoryEntry.class);
+        return toCreate;
     }
 
     /**

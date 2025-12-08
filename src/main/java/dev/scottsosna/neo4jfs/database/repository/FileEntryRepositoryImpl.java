@@ -1,6 +1,7 @@
 package dev.scottsosna.neo4jfs.database.repository;
 
 import dev.scottsosna.neo4jfs.config.Neo4jfsConfiguration;
+import dev.scottsosna.neo4jfs.database.node.DirectoryEntry;
 import dev.scottsosna.neo4jfs.database.node.FileBuilder;
 import dev.scottsosna.neo4jfs.database.node.FileEntry;
 import org.springframework.stereotype.Component;
@@ -22,27 +23,14 @@ public class FileEntryRepositoryImpl extends BaseEntryRepositoryImpl implements 
     }
 
     /**
-     * Create a new file entry
+     * Persist file entry.  Very simple but pulled out in case future more needs to be done.
      * @param fsUri Neo4Jfs base URI
-     * @param name file name
-     * @param storageId ID for file as stored in Storage Manager
-     * @param size size of the file.
-     * @return persisted FileEntry
+     * @param f file entry to persist
+     * @return updated file entry
      */
-    @Override
     public FileEntry create(final URI fsUri,
-                            final String name,
-                            final String storageId,
-                            final long size) {
-
-        //  Create the new file entry and persist.
-        FileEntry f = new FileBuilder()
-            .setName(name)
-            .setStorageId(storageId)
-            .setSize(size)
-            .build();
+                            final FileEntry f) {
         save(fsUri, f, FileEntry.class);
-
         return f;
     }
 

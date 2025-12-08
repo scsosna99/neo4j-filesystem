@@ -10,14 +10,12 @@ import java.net.URI;
 public interface FileEntryRepository extends BaseEntryRepository {
 
     /**
-     * Create a new file entry
+     * Persist file entry.
      * @param fsUri Neo4Jfs base URI
-     * @param name file name
-     * @param storageId ID for file as stored in Storage Manager
-     * @param size size of the file.
-     * @return persisted FileEntry
+     * @param f file entry to persist
+     * @return updated file entry
      */
-    FileEntry create(final URI fsUri, final String name, final String storageId, long size);
+    FileEntry create(final URI fsUri, final FileEntry f);
 
     /**
      * Delete a file entry by its Neo4J node ID

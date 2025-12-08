@@ -3,6 +3,7 @@ package dev.scottsosna.neo4jfs.service;
 import dev.scottsosna.neo4jfs.database.model.storage.StorageFileInfo;
 import dev.scottsosna.neo4jfs.database.node.BaseEntry;
 import dev.scottsosna.neo4jfs.database.node.DirectoryEntry;
+import dev.scottsosna.neo4jfs.database.node.FileBuilder;
 import dev.scottsosna.neo4jfs.database.node.FileEntry;
 import dev.scottsosna.neo4jfs.database.repository.FileEntryRepository;
 import dev.scottsosna.neo4jfs.exception.Neo4jfsUnknownEntryException;
@@ -175,7 +176,12 @@ public class FileServiceImpl extends BaseNeo4jfsService implements FileService {
         }
 
         //  Create/persist new file entry.
-        FileEntry f = repository.create(targetUri, fileName, info.getStorageId(), info.getSize());
+        FileEntry f = new FileBuilder(targetDirectory)
+            .setName(fileName)
+            .setStorageId(info.getStorageId())
+            .setSize(info.getSize())
+            .build();
+        repository.create(targetUri, f);
 
         //  Add to the parent directory.
         directoryService.addFile(targetUri, targetDirectory, f);
@@ -281,7 +287,12 @@ public class FileServiceImpl extends BaseNeo4jfsService implements FileService {
         StorageFileInfo info = (is != null) ? storageManager.createFile(uri, is) : storageManager.createFile(uri);
 
         //  Create/persist new file entry.
-        FileEntry f = repository.create(uri, fileName, info.getStorageId(), info.getSize());
+        FileEntry f = new FileBuilder((DirectoryEntry) parent)
+            .setName(fileName)
+            .setStorageId(info.getStorageId())
+            .setSize(info.getSize())
+            .build();
+        repository.create(uri, f);
 
         //  Add to the parent directory.
         directoryService.addFile(uri, (DirectoryEntry) parent, f);

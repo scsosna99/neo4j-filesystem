@@ -1,6 +1,7 @@
 package dev.scottsosna.neo4jfs.service;
 
 import dev.scottsosna.neo4jfs.database.node.BaseEntry;
+import dev.scottsosna.neo4jfs.database.node.DirectoryBuilder;
 import dev.scottsosna.neo4jfs.database.node.DirectoryEntry;
 import dev.scottsosna.neo4jfs.database.node.FileEntry;
 import dev.scottsosna.neo4jfs.database.repository.DirectoryEntryRepository;
@@ -97,11 +98,12 @@ public class DirectoryServiceImpl extends BaseNeo4jfsService implements Director
                 throw new FileAlreadyExistsException(path.toString());
             }
 
-            //  All good, create the new directory.
-            DirectoryEntry newbie = repository.create(uri, path.getFileName().toString());
-            dir.setSubdirs(List.of(newbie));
-            repository.save(uri, dir);
-            return newbie;
+            //  Build a new directory node and persist it.
+            DirectoryEntry newbie = new DirectoryBuilder(dir)
+                .name(path.getFileName().toString())
+                .root(false)
+                .build();
+            return repository.create(uri, newbie, dir);
         } else {
             //  In fact, parent is not a directory, fail.
             throw new NotDirectoryException(parent.toString());
