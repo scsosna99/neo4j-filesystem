@@ -19,6 +19,8 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.StreamSupport;
 
+import static dev.scottsosna.neo4jfs.config.Neo4jfsConstants.*;
+
 /**
  * Database functionality shared amongst all entry types.
  */
@@ -82,7 +84,7 @@ public class BaseEntryRepositoryImpl {
     public BaseEntry findNamedChild(final URI fsUri,
                                     final String directoryNodeId,
                                     final String childNodeName) {
-        Map<String,Object> params = Map.of("id", directoryNodeId, "name", childNodeName);
+        Map<String,Object> params = Map.of(CYPHER_PARAM_NODEID, directoryNodeId, CYPHER_PARAM_NAME, childNodeName);
         List<BaseEntry> entries = query(fsUri, QUERY_DIRECTORY_AND_CHILD, params, BaseEntry.class);
         return (entries.isEmpty() ? null : entries.get(1));
     }
@@ -111,7 +113,9 @@ public class BaseEntryRepositoryImpl {
     public void deleteRelationship(final URI uri,
                                    final String startId,
                                    final String endId) {
-        getSessionFactory(uri).openSession().query(QUERY_DELETE_RELATIONSHIP, Map.of("startId", startId, "endId", endId));
+        getSessionFactory(uri)
+            .openSession()
+            .query(QUERY_DELETE_RELATIONSHIP, Map.of(CYPHER_PARAM_NODEID_START, startId, CYPHER_PARAM_NODEID_END, endId));
     }
 
     /**
@@ -200,7 +204,7 @@ public class BaseEntryRepositoryImpl {
      * @return true if successfully deleted, false otherwise.
      */
     protected boolean deleteNodeById(final URI fsUri, final String nodeId) {
-        Result r = getSessionFactory(fsUri).openSession().query(QUERY_DELETE_NODE, Map.of("id", nodeId));
+        Result r = getSessionFactory(fsUri).openSession().query(QUERY_DELETE_NODE, Map.of(CYPHER_PARAM_NODEID, nodeId));
         return r.queryStatistics().getNodesDeleted() > 0;
     }
 

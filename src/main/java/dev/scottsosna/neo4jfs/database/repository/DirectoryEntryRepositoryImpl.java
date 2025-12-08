@@ -18,11 +18,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.StreamSupport;
 
+import static dev.scottsosna.neo4jfs.config.Neo4jfsConstants.*;
+
 @Component
 public class DirectoryEntryRepositoryImpl extends BaseEntryRepositoryImpl implements DirectoryEntryRepository {
 
     /**
-     * Various Cypher queries and clauses used during querying directory entries..
+     * Various Cypher queries and clauses used during querying directory entries.
      */
     private static final String MATCH_DIRECTORY = "(d%d:Directory {name: $name%d, root: $root%d})";
     private static final String MATCH_ROOT = "(r:Directory {name: '/', root:true})";
@@ -145,7 +147,10 @@ public class DirectoryEntryRepositoryImpl extends BaseEntryRepositoryImpl implem
                                       final String directoryId,
                                       final int skip,
                                       final int limit) {
-        List<DirectoryEntry> results = query(fsUri, QUERY_CHILDREN_PAGINATED, Map.of("id", directoryId, "skip", skip + 1, "limit", limit), DirectoryEntry.class);
+        List<DirectoryEntry> results = query(fsUri, QUERY_CHILDREN_PAGINATED,
+            Map.of(CYPHER_PARAM_NODEID, directoryId,
+                CYPHER_PARAM_PAGINATION_SKIP, skip + 1,
+                CYPHER_PARAM_PAGINATION_LIMIT, limit), DirectoryEntry.class);
         return results.isEmpty() ? null : results.getFirst();
     }
 
@@ -161,7 +166,10 @@ public class DirectoryEntryRepositoryImpl extends BaseEntryRepositoryImpl implem
                                     final String directoryId,
                                     final int skip,
                                     final int limit) {
-        List<FileEntry> results = query(fsUri, QUERY_FILES_PAGINATED, Map.of("id", directoryId, "skip", skip + 1, "limit", limit), FileEntry.class);
+        List<FileEntry> results = query(fsUri, QUERY_FILES_PAGINATED,
+            Map.of(CYPHER_PARAM_NODEID, directoryId,
+                CYPHER_PARAM_PAGINATION_SKIP, skip + 1,
+                CYPHER_PARAM_PAGINATION_LIMIT, limit), FileEntry.class);
         return results.isEmpty() ? List.of() : results;
     }
 
@@ -177,7 +185,10 @@ public class DirectoryEntryRepositoryImpl extends BaseEntryRepositoryImpl implem
                                            final String directoryId,
                                            final int skip,
                                            final int limit) {
-        List<DirectoryEntry> results = query(fsUri, QUERY_SUBDIRS_PAGINATED, Map.of("id", directoryId, "skip", skip + 1, "limit", limit), DirectoryEntry.class);
+        List<DirectoryEntry> results = query(fsUri, QUERY_SUBDIRS_PAGINATED,
+            Map.of(CYPHER_PARAM_NODEID, directoryId,
+                CYPHER_PARAM_PAGINATION_SKIP, skip + 1,
+                CYPHER_PARAM_PAGINATION_LIMIT, limit), DirectoryEntry.class);
         return results.isEmpty() ? List.of() : results;
     }
 

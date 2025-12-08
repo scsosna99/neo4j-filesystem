@@ -33,6 +33,16 @@ public class Neo4jfsConstants {
     public static final String NEO4JFS_URI_SCHEME = "neo4jfs";
 
     /**
+     * Parameters used in Cypher queries.
+     */
+    public static final String CYPHER_PARAM_NODEID = "id";
+    public static final String CYPHER_PARAM_NODEID_END = "endId";
+    public static final String CYPHER_PARAM_NODEID_START = "startId";
+    public static final String CYPHER_PARAM_NAME = "name";
+    public static final String CYPHER_PARAM_PAGINATION_LIMIT = "limit";
+    public static final String CYPHER_PARAM_PAGINATION_SKIP = "skip";
+
+    /**
      * Spring-configured properties that can be retrieved ny Spring context.
      */
     public static final String NEO4JFS_PROPERTY_PAGINATION_SIZE = "neo4jfs.pagination.size";
