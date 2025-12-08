@@ -29,6 +29,5 @@ out/
 ### Java ###
 *.class
 
-### Videos used for demos ###
-*.mp4
-*.m4v
+### Local storage manager files
+neo4jfs
