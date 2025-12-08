@@ -294,7 +294,7 @@ public class LocalStorageManager implements StorageManager {
     private void init() throws IOException{
         //  Use current working directory as default when base path is not configured.
         if (neo4jfsBasePath == null) {
-            neo4jfsBasePath = Path.of(System.getProperty("user.dir"), Neo4jfsConstants.NEO4JFS_URI_SCHEME).toString();
+            neo4jfsBasePath = Path.of(System.getProperty("user.dir"), "neo4jfs-storage").toString();
         }
 
         //  If base directory doesn't exist, create; if exists ensure it is a directory.

@@ -30,4 +30,4 @@ out/
 *.class
 
 ### Local storage manager files
-neo4jfs
+neo4jfs-storage
