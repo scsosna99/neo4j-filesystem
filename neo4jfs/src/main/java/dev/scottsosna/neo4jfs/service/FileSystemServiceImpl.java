@@ -10,11 +10,15 @@ import dev.scottsosna.neo4jfs.exception.Neo4jfsDatabaseException;
 import dev.scottsosna.neo4jfs.storage.StorageManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
 import java.net.URI;
 import java.nio.file.FileStore;
+import java.nio.file.FileSystem;
+import java.nio.file.FileSystems;
+import java.util.Map;
 
 /**
  * File service management service.
@@ -117,11 +121,16 @@ public class FileSystemServiceImpl extends BaseNeo4jfsService implements FileSys
         if (db.getAccess() != DatabaseAccessType.READ_WRITE) throw new Neo4jfsDatabaseException("%s: Partition database must be read-write.".formatted(db.getName()));
         if (db.getCurrentStatus() != DatabaseStatusType.ONLINE) throw new Neo4jfsDatabaseException("%s: Partition database must be online.".formatted(db.getName()));
     }
-//
+
 //    @Scheduled(initialDelay = 2000L)
 //    public void test() {
-//        try {
-//            try (FileSystem fs = FileSystems.newFileSystem(URI.create("neo4jfs://scsosna99/"), Map.of())) {
+//        try (FileSystem fs = FileSystems.newFileSystem(URI.create("neo4jfs://scsosna99/"), Map.of())) {
+//            FileSystems.newFileSystem(URI.create("neo4jfs://scsosna123/"), Map.of());
+//        } catch (Exception e) {
+//            System.out.println(e.getMessage());
+//            e.printStackTrace();
+//        }
+//    }
 ////                Files.getFileStore(Path.of(new URI("neo4jfs://scsosna99")));
 //                Files.createDirectory(fs.getPath("/scs1"));
 //                Files.createDirectory(fs.getPath("/scs1/scs2"));

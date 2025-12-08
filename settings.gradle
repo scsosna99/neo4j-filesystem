@@ -4,3 +4,5 @@ pluginManagement {
     }
 }
 rootProject.name = 'neo4j-filesystem'
+include('neo4jfs')
+include 'neo4jfs-demo'
