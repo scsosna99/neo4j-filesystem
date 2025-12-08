@@ -3,4 +3,4 @@ pluginManagement {
         id 'org.jetbrains.kotlin.jvm' version '2.2.20'
     }
 }
-rootProject.name = 'neo4jfs'
+rootProject.name = 'neo4j-filesystem'
