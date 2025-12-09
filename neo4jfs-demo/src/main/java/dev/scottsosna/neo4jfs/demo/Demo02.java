@@ -55,7 +55,7 @@ public class Demo02 implements Demo {
                 System.out.println("ORIGINAL: " + new String(buffer.array()));
             }
 
-            //  Truncate file and write garbage.
+            //  Open the file to write garbage..
             System.out.println ("Open file to write garbage");
             try (SeekableByteChannel channel = Files.newByteChannel(fs.getPath("/text/github.html"), StandardOpenOption.WRITE)) {
                 ByteBuffer buffer = ByteBuffer.allocate(128);
