@@ -49,6 +49,20 @@ public class SpringContext implements ApplicationContextAware {
         return context.getBean(beanClass);
     }
 
+    /**&
+     * Get a bean by name and type
+     * @param name name assigned to the bean
+     * @param requiredType what class should this bean be
+     * @return
+     */
+    public static <T> T getBean(final String name, Class<?> requiredType) {
+        if (context.containsBean(name) && context.isTypeMatch(name, requiredType)) {
+            return (T) context.getBean(name);
+        } else {
+            return null;
+        }
+    }
+
     /**
      * Returns a specific configuration property.
      * @param propertyName property name
