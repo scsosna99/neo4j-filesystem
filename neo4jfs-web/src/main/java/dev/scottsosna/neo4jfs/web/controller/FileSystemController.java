@@ -1,4 +1,4 @@
-package dev.scottsosna.neo4jfs.controller;
+package dev.scottsosna.neo4jfs.web.controller;
 
 import dev.scottsosna.neo4jfs.service.FileSystemService;
 import org.springframework.http.HttpStatus;

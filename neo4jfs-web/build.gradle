@@ -1,0 +1,19 @@
+plugins {
+    id 'java'
+}
+
+group = 'dev.scottsosna.neo4jfs'
+version = 'unspecified'
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    implementation project(':neo4jfs')
+    implementation 'org.springframework.boot:spring-boot-starter-web:3.5.7'
+}
+
+test {
+    useJUnitPlatform()
+}
