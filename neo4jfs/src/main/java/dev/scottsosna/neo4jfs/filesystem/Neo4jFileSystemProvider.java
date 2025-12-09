@@ -310,13 +310,10 @@ public class Neo4jFileSystemProvider extends FileSystemProvider {
     public <V extends FileAttributeView> V getFileAttributeView(Path path,
                                                                 Class<V> type,
                                                                 LinkOption... options) {
-        if (type == BasicFileAttributeView.class) {
-            try {
-                return (V) directoryService.readAttributeView(path.toUri(), options);
-            } catch (IOException ioe) {
-                return null;
-            }
-        } else {
+        //  Directory service does actual work of finding the file/directory and determining attribute view to return.
+        try {
+            return (V) directoryService.readAttributeView(path.toUri(), type, options);
+        } catch (IOException ioe) {
             return null;
         }
     }
@@ -335,8 +332,9 @@ public class Neo4jFileSystemProvider extends FileSystemProvider {
     public <A extends BasicFileAttributes> A readAttributes(Path path,
                                                             Class<A> type,
                                                             LinkOption... options) throws IOException {
-        if (type == BasicFileAttributes.class) {
-            return (A) directoryService.readAttributeView(path.toUri(), options).readAttributes();
+        FileAttributeView view = getFileAttributeView(path, FileAttributeView.class, options);
+        if (view instanceof BasicFileAttributeView v) {
+            return (A) v.readAttributes();
         } else {
             return null;
         }

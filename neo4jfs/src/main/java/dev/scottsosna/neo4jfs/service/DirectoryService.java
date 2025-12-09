@@ -10,6 +10,7 @@ import java.nio.file.CopyOption;
 import java.nio.file.FileVisitor;
 import java.nio.file.LinkOption;
 import java.nio.file.attribute.BasicFileAttributeView;
+import java.nio.file.attribute.FileAttributeView;
 import java.util.List;
 
 /**
@@ -134,11 +135,12 @@ public interface DirectoryService {
     /**
      * Returns the entry specified by URI as BasicFileAttributeView, needed by file system provider.
      * @param uri Neo4Jfs URI for the directory or file to read attribute view for.
+     * @param clazz type of view to return.
      * @param options ignored
      * @return the attributes as a "view"
      * @throws IOException I/O error occurred while retrieving the entry to return
      */
-    BasicFileAttributeView readAttributeView(final URI uri, final LinkOption... options) throws IOException;
+    <T extends FileAttributeView> FileAttributeView readAttributeView(final URI uri, final Class<T> clazz, final LinkOption... options) throws IOException;
 
     /**
      * Attempt to set attribute with value provided

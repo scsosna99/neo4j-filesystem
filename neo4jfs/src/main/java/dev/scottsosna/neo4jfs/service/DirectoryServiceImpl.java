@@ -12,8 +12,10 @@ import dev.scottsosna.neo4jfs.database.repository.util.Neo4jfsTreeWalker;
 import dev.scottsosna.neo4jfs.exception.Neo4jfsIdenticalSourceTargetException;
 import dev.scottsosna.neo4jfs.exception.Neo4jfsUnknownEntryException;
 import dev.scottsosna.neo4jfs.filesystem.Neo4jfsCopyOption;
+import dev.scottsosna.neo4jfs.filesystem.Neo4jfsFileOwnerAttributeView;
 import dev.scottsosna.neo4jfs.service.util.CopyMoveConsumer;
 import dev.scottsosna.neo4jfs.service.util.FileStream;
+import org.neo4j.ogm.exception.core.BaseClassNotFoundException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -23,6 +25,9 @@ import java.io.IOException;
 import java.net.URI;
 import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributeView;
+import java.nio.file.attribute.BasicFileAttributes;
+import java.nio.file.attribute.FileAttributeView;
+import java.nio.file.attribute.FileOwnerAttributeView;
 import java.time.Instant;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -290,14 +295,31 @@ public class DirectoryServiceImpl extends BaseNeo4jfsService implements Director
     /**
      * Returns the entry specified by URI as BasicFileAttributeView, needed by file system provider.
      * @param uri Neo4Jfs URI for the directory or file to read attribute view for.
+     * @param clazz type of view to return.
      * @param options ignored
      * @return the attributes as a "view"
      * @throws IOException I/O error occurred while retrieving the entry to return
      */
-    public BasicFileAttributeView readAttributeView(final URI uri, final LinkOption... options) throws IOException {
+    public <T extends FileAttributeView> FileAttributeView readAttributeView(final URI uri,
+                                                                             final Class<T> clazz,
+                                                                             final LinkOption... options) throws IOException {
         checkUri(uri);
-        System.out.println("readAttributeView: %s".formatted(uri));
-        return find(uri).getLast();
+
+        //  Always retrieve the path first to immediately notify if file/directory URI is invalid.
+        List<BaseEntry> pathEntries = find(uri);
+        if (pathEntries == null || pathEntries.isEmpty()) {
+            throw new NoSuchFileException("%s: no such file or directory".formatted(uri));
+        }
+        
+        //  Work done is dependent on the view requested.
+        if (clazz == BasicFileAttributeView.class) {
+            //  BaseEntry implements BasicFileAttributeView.
+            return pathEntries.getLast();
+        } else if (clazz == FileOwnerAttributeView.class) {
+            return new Neo4jfsFileOwnerAttributeView(pathEntries.getLast().getUserName());
+        } else {
+            throw new IllegalArgumentException("Requested view not supported: %s".formatted(clazz.getName()));
+        }
     }
 
     /**
