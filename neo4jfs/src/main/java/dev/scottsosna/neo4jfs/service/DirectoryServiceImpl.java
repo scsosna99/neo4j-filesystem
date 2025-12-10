@@ -7,15 +7,16 @@ import dev.scottsosna.neo4jfs.database.node.FileEntry;
 import dev.scottsosna.neo4jfs.database.repository.DirectoryEntryRepository;
 import dev.scottsosna.neo4jfs.database.repository.util.DebuggingFileVisitor;
 import dev.scottsosna.neo4jfs.database.repository.util.DirectoryDeleteFileVisitor;
-import dev.scottsosna.neo4jfs.database.repository.util.Neo4jfsFileAttributes;
 import dev.scottsosna.neo4jfs.database.repository.util.Neo4jfsTreeWalker;
 import dev.scottsosna.neo4jfs.exception.Neo4jfsIdenticalSourceTargetException;
 import dev.scottsosna.neo4jfs.exception.Neo4jfsUnknownEntryException;
 import dev.scottsosna.neo4jfs.filesystem.Neo4jfsCopyOption;
-import dev.scottsosna.neo4jfs.filesystem.Neo4jfsFileOwnerAttributeView;
+import dev.scottsosna.neo4jfs.filesystem.attribute.BasicFileAttributeViewImpl;
+import dev.scottsosna.neo4jfs.filesystem.attribute.BasicFileAttributesImpl;
+import dev.scottsosna.neo4jfs.filesystem.attribute.FileOwnerAttributeViewImpl;
+import dev.scottsosna.neo4jfs.filesystem.attribute.PosixFileAttributeViewImpl;
 import dev.scottsosna.neo4jfs.service.util.CopyMoveConsumer;
 import dev.scottsosna.neo4jfs.service.util.FileStream;
-import org.neo4j.ogm.exception.core.BaseClassNotFoundException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -25,9 +26,9 @@ import java.io.IOException;
 import java.net.URI;
 import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributeView;
-import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.attribute.FileAttributeView;
 import java.nio.file.attribute.FileOwnerAttributeView;
+import java.nio.file.attribute.PosixFileAttributeView;
 import java.time.Instant;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -312,11 +313,13 @@ public class DirectoryServiceImpl extends BaseNeo4jfsService implements Director
         }
         
         //  Work done is dependent on the view requested.
-        if (clazz == BasicFileAttributeView.class) {
+        if (clazz == FileAttributeView.class) {
             //  BaseEntry implements BasicFileAttributeView.
-            return pathEntries.getLast();
+            return new BasicFileAttributeViewImpl(pathEntries.getLast());
         } else if (clazz == FileOwnerAttributeView.class) {
-            return new Neo4jfsFileOwnerAttributeView(pathEntries.getLast().getUserName());
+            return new FileOwnerAttributeViewImpl(pathEntries.getLast());
+        } else if (clazz == PosixFileAttributeView.class) {
+            return new PosixFileAttributeViewImpl(pathEntries.getLast());
         } else {
             throw new IllegalArgumentException("Requested view not supported: %s".formatted(clazz.getName()));
         }
@@ -682,7 +685,7 @@ public class DirectoryServiceImpl extends BaseNeo4jfsService implements Director
     private void walkFileTree(final URI uri,
                               final FileVisitor<Neo4jfsTreeWalker.NeofjfsWalkerEvent> visitor) throws IOException {
 
-        var attribs = new Neo4jfsFileAttributes();
+        var attribs = new BasicFileAttributesImpl(null);
         try (var walker = new Neo4jfsTreeWalker(repository)) {
             var env = walker.walk(uri);
             do {

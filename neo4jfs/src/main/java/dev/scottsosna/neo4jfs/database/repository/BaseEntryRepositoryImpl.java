@@ -35,7 +35,7 @@ public class BaseEntryRepositoryImpl {
     /**
      * Holds Neo4J connection and authentication credentials.
      */
-    private Neo4jfsConfiguration config;
+    protected Neo4jfsConfiguration config;
 
     /**
      * Session factories for each Neo4Jfs partition (database), static to allow sharing across services.
@@ -92,15 +92,16 @@ public class BaseEntryRepositoryImpl {
     /**
      * Save or update an entry to Neo4J
      *
-     * @param uri URI of the file system, using host to identify database.
+     * @param fsUri URI of the file system, using host to identify database.
      * @param entry entry to be persisted
      * @param clazz specific class of entry, e.g. DirectoryEntry or FileEntry
      */
-    public <T extends BaseEntry> void save(final URI uri,
+    public <T extends BaseEntry> void save(final URI fsUri,
                                            final T entry,
                                            final Class<T> clazz) {
         updateTimestamps(entry);
-        getSessionFactory(uri).openSession().save(entry);
+        getSessionFactory(fsUri).openSession().save(entry);
+        entry.setFsUri(fsUri);
     }
 
     /**
@@ -150,15 +151,17 @@ public class BaseEntryRepositoryImpl {
     /**
      * Load an object from Neo4J by its id.
      *
-     * @param uri URI for the file system
+     * @param fsUri URI for the file system
      * @param nodeId id of the node to load
      * @param clazz the class of the object to load
      * @return the loaded object
      */
-    protected <T extends BaseEntry> T load(final URI uri,
+    protected <T extends BaseEntry> T load(final URI fsUri,
                                            final String nodeId,
                                            final Class<T> clazz) {
-        return getSessionFactory(uri).openSession().load(clazz, nodeId);
+        BaseEntry toReturn = getSessionFactory(fsUri).openSession().load(clazz, nodeId);
+        toReturn.setFsUri(fsUri);
+        return clazz.cast(toReturn);
     }
 
     /**
@@ -217,26 +220,28 @@ public class BaseEntryRepositoryImpl {
      * @param clazz specific class of objects being returned
      * @return list of 0 or more objects of type clazz
      */
-    protected <T> List<T> query(final URI fsUri,
-                                final String query,
-                                final Map<String,Object> parameters,
-                                final Class<T> clazz) {
+    protected <T extends BaseEntry> List<T> query(final URI fsUri,
+                                                  final String query,
+                                                  final Map<String,Object> parameters,
+                                                  final Class<T> clazz) {
         var results = getSessionFactory(fsUri).openSession().query(clazz, query, parameters);
-        return StreamSupport.stream(results.spliterator(), false).toList();
+        List<T> toReturn = StreamSupport.stream(results.spliterator(), false).toList();
+        toReturn.forEach(e -> e.setFsUri(fsUri));
+        return toReturn;
     }
 
     /**
      * Execute Cypher query and return result objects
      *
-     * @param uri Neo4J URI identifying the partition (database)
+     * @param fsUri Neo4J URI identifying the partition (database)
      * @param query Cypher query to execute
      * @param clazz specific class of objects being returned
      * @return list of 0 or more objects of type clazz
      */
-    protected <T> List<T> query(final URI uri,
-                                final String query,
-                                final Class<T> clazz) {
-        return query(uri, query, Map.of(), clazz);
+    protected <T extends BaseEntry> List<T> query(final URI fsUri,
+                                                  final String query,
+                                                  final Class<T> clazz) {
+        return query(fsUri, query, Map.of(), clazz);
     }
 
     /**

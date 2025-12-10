@@ -6,9 +6,10 @@ public class DirectoryBuilder {
 
     private boolean hidden = false;
     private boolean root = false;
-    private String name;
-    private String userName;
-    private String groupName;
+    private String name = null;
+    private String permissions = null;
+    private String groupName = null;
+    private String userName = null;
 
     /**
      * Default constructor.
@@ -36,6 +37,7 @@ public class DirectoryBuilder {
         dir.name = name;
         dir.userName = userName;
         dir.groupName = groupName;
+        dir.permissions = permissions;
         dir.hidden = hidden;
         dir.root = root;
         dir.subdirs = new ArrayList<>();
@@ -69,6 +71,11 @@ public class DirectoryBuilder {
 
     public DirectoryBuilder groupName(String groupName) {
         this.groupName = groupName;
+        return this;
+    }
+
+    public DirectoryBuilder permissions(String permissions) {
+        this.permissions = permissions;
         return this;
     }
 }

@@ -2,6 +2,7 @@ package dev.scottsosna.neo4jfs.filesystem;
 
 import dev.scottsosna.neo4jfs.config.Neo4jfsConstants;
 import dev.scottsosna.neo4jfs.database.node.BaseEntry;
+import dev.scottsosna.neo4jfs.filesystem.attribute.BasicFileAttributesImpl;
 import dev.scottsosna.neo4jfs.service.DirectoryService;
 import dev.scottsosna.neo4jfs.service.FileService;
 import dev.scottsosna.neo4jfs.service.FileSystemService;
@@ -15,10 +16,7 @@ import java.io.OutputStream;
 import java.net.URI;
 import java.nio.channels.SeekableByteChannel;
 import java.nio.file.*;
-import java.nio.file.attribute.BasicFileAttributeView;
-import java.nio.file.attribute.BasicFileAttributes;
-import java.nio.file.attribute.FileAttribute;
-import java.nio.file.attribute.FileAttributeView;
+import java.nio.file.attribute.*;
 import java.nio.file.spi.FileSystemProvider;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -270,7 +268,9 @@ public class Neo4jFileSystemProvider extends FileSystemProvider {
      */
     @Override
     public boolean isHidden(Path path) throws IOException {
-        return readAttributes(path, BaseEntry.class).isHidden();
+        //  TODO: what is the correct view for the hidden attributes?
+        return false;
+//        return readAttributes(path, BasicFileAttributes.class).isHidden();
     }
 
     /**
@@ -312,7 +312,7 @@ public class Neo4jFileSystemProvider extends FileSystemProvider {
                                                                 LinkOption... options) {
         //  Directory service does actual work of finding the file/directory and determining attribute view to return.
         try {
-            return (V) directoryService.readAttributeView(path.toUri(), type, options);
+            return type.cast(directoryService.readAttributeView(path.toUri(), type, options));
         } catch (IOException ioe) {
             return null;
         }
@@ -332,11 +332,23 @@ public class Neo4jFileSystemProvider extends FileSystemProvider {
     public <A extends BasicFileAttributes> A readAttributes(Path path,
                                                             Class<A> type,
                                                             LinkOption... options) throws IOException {
-        FileAttributeView view = getFileAttributeView(path, FileAttributeView.class, options);
-        if (view instanceof BasicFileAttributeView v) {
-            return (A) v.readAttributes();
+
+        if (type == BasicFileAttributes.class) {
+            FileAttributeView view = getFileAttributeView(path, BasicFileAttributeView.class, options);
+            if (view instanceof BasicFileAttributeView v) {
+                return type.cast(v.readAttributes());
+            } else {
+                return null;
+            }
+        } else if (type == PosixFileAttributes.class) {
+            FileAttributeView view = getFileAttributeView(path, PosixFileAttributeView.class, options);
+            if (view instanceof PosixFileAttributeView v) {
+                return type.cast(v.readAttributes());
+            } else {
+                return null;
+            }
         } else {
-            return null;
+            throw new UnsupportedOperationException("Requested view not supported: " + type.getSimpleName());
         }
     }
 

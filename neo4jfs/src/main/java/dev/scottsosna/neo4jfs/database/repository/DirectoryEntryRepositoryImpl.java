@@ -75,6 +75,7 @@ public class DirectoryEntryRepositoryImpl extends BaseEntryRepositoryImpl implem
             .name(ROOT_DIRECTORY_NAME)
             .userName(Neo4jfsConstants.NAME_ADMIN_USER)
             .groupName(Neo4jfsConstants.NAME_ADMIN_GROUP)
+            .permissions(config.defaultRootPermissions)
             .root(true)
             .build();
         save(fsUri, d, DirectoryEntry.class);

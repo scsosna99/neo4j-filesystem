@@ -6,10 +6,11 @@ package dev.scottsosna.neo4jfs.database.node;
 public class FileBuilder {
 
     boolean hidden = false;
-    private String name;
-    private String groupName;
-    private String userName;
-    private String storageId;
+    private String name = null;
+    private String groupName = null;
+    private String userName = null;
+    private String permissions = null;
+    private String storageId = null;
     private Long size;
 
     /**
@@ -38,6 +39,7 @@ public class FileBuilder {
         file.name = name;
         file.userName = userName;
         file.groupName = groupName;
+        file.permissions = permissions;
         file.hidden = hidden;
         file.storageId = storageId;
         file.size = size;
