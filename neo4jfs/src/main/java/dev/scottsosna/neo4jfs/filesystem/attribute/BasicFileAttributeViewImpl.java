@@ -57,9 +57,6 @@ public class BasicFileAttributeViewImpl implements java.nio.file.attribute.Basic
     /**
      * Updates any or all of the file's last modified time, last access time, and create time attributes.
      *
-     * TODO: a {@code BaseEntry} is a Neo4J node and doesn't have a way to persist these changes back to
-     * the database.  More thought needed, TBD whether there's a work-around or should in fact be a no-op.
-     *
      * @param lastModifiedTime the new last modified time, or {@code null} to not change the value
      * @param lastAccessTime the last access time, or {@code null} to not change the value
      * @param createTime the file's create time, or {@code null} to not change the value
