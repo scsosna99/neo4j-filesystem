@@ -1,4 +1,4 @@
-package dev.scottsosna.neo4jfs.filesystem;
+package dev.scottsosna.neo4jfs.filesystem.option;
 
 import java.nio.file.CopyOption;
 

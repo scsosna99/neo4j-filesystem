@@ -3,14 +3,13 @@ package dev.scottsosna.neo4jfs.service;
 import dev.scottsosna.neo4jfs.database.node.BaseEntry;
 import dev.scottsosna.neo4jfs.database.node.DirectoryEntry;
 import dev.scottsosna.neo4jfs.database.node.FileEntry;
-import dev.scottsosna.neo4jfs.filesystem.Neo4jfsDeleteOption;
+import dev.scottsosna.neo4jfs.filesystem.option.Neo4jfsDeleteOption;
 
 import java.io.IOException;
 import java.net.URI;
 import java.nio.file.CopyOption;
 import java.nio.file.FileVisitor;
 import java.nio.file.LinkOption;
-import java.nio.file.attribute.BasicFileAttributeView;
 import java.nio.file.attribute.FileAttributeView;
 import java.util.List;
 
