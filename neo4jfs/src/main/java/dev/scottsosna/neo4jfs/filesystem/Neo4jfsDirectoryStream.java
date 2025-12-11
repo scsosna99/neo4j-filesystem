@@ -130,7 +130,7 @@ public class Neo4jfsDirectoryStream implements DirectoryStream<Path>, AutoClosea
          */
         Neo4jfsDirectoryIterator(Neo4jfsDirectoryStream ds) {
             this.ds = ds;
-            subdirIterator = ds.d.getSubdirs() != null ? ds.d.getSubdirs().iterator() : emptyIterator();
+            subdirIterator = ds.subdirs != null && !ds.subdirs.isEmpty() ? ds.subdirs.iterator() : emptyIterator();
         }
 
         /**
@@ -151,9 +151,9 @@ public class Neo4jfsDirectoryStream implements DirectoryStream<Path>, AutoClosea
 
             //  Possibly more, query and attempt to reload internal iterator.
             ds.queryForSubdirs();
-            if (ds.d != null && ds.d.getSubdirs() != null && !ds.d.getSubdirs().isEmpty()) {
+            if (ds.d != null && !ds.subdirs.isEmpty()) {
                 //  More found, create new internal iterator.
-                subdirIterator = ds.d.getSubdirs().iterator();
+                subdirIterator = ds.subdirs.iterator();
                 return subdirIterator.hasNext();
             }
 
@@ -166,7 +166,11 @@ public class Neo4jfsDirectoryStream implements DirectoryStream<Path>, AutoClosea
          */
         @Override
         public Path next() {
-            return Path.of(URI.create("%s/%s".formatted(ds.uri, subdirIterator.next().getName())));
+            if (uri.getPath().length() == 1) {
+                return Path.of(URI.create("%s%s".formatted(ds.uri, subdirIterator.next().getName())));
+            } else {
+                return Path.of(URI.create("%s/%s".formatted(ds.uri, subdirIterator.next().getName())));
+            }
         }
 
         /**
