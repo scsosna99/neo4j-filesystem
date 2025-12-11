@@ -42,6 +42,21 @@ public class BaseNeo4jfsService {
      * @return true if found, false otherwise
      */
     protected boolean checkForCopyOption(CopyOption requested, CopyOption[] options) {
-        return options != null && Arrays.stream(options).anyMatch(requested::equals);
+        return checkForOption(requested, options, CopyOption.class);
+    }
+
+    /**
+     * General method for checking for required enum in the list of enums (options) passed into a call.
+     * @param required the value required/desired
+     * @param options array of options passed in as varargs to a call
+     * @param clazz the specific class/enum
+     * @return true if the option exists, false otherwise
+     */
+    protected <T> boolean checkForOption(T required, T[] options, Class<T> clazz) {
+        return
+            options != null &&
+            options.length > 0 &&
+            clazz.isAssignableFrom(required.getClass()) &&
+            Arrays.asList(options).contains(required);
     }
 }

@@ -50,7 +50,7 @@ public class DirectoryDeleteFileVisitor extends SimpleFileVisitor<Neo4jfsTreeWal
         throws IOException
     {
         if (e == null) {
-            directoryService.rmdir(dir.uri());
+            directoryService.delete(dir.uri());
             return FileVisitResult.CONTINUE;
         } else {
             // directory iteration failed

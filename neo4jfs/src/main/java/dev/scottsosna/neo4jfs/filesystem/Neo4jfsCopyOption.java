@@ -9,5 +9,5 @@ public enum Neo4jfsCopyOption implements CopyOption {
     /**
      * Copying a directory should recurse and copy all subdirectories.
      */
-    RECURVSIVE_COPY
+    COPY_RECURSIVELY
 }

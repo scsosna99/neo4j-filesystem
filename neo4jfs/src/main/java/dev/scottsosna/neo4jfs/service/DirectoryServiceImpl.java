@@ -5,12 +5,12 @@ import dev.scottsosna.neo4jfs.database.node.DirectoryBuilder;
 import dev.scottsosna.neo4jfs.database.node.DirectoryEntry;
 import dev.scottsosna.neo4jfs.database.node.FileEntry;
 import dev.scottsosna.neo4jfs.database.repository.DirectoryEntryRepository;
-import dev.scottsosna.neo4jfs.database.repository.util.DirectoryDeleteFileVisitor;
 import dev.scottsosna.neo4jfs.database.repository.util.DumpTreeVisitor;
 import dev.scottsosna.neo4jfs.database.repository.util.Neo4jfsTreeWalker;
 import dev.scottsosna.neo4jfs.exception.Neo4jfsIdenticalSourceTargetException;
 import dev.scottsosna.neo4jfs.exception.Neo4jfsUnknownEntryException;
 import dev.scottsosna.neo4jfs.filesystem.Neo4jfsCopyOption;
+import dev.scottsosna.neo4jfs.filesystem.Neo4jfsDeleteOption;
 import dev.scottsosna.neo4jfs.filesystem.attribute.BasicFileAttributeViewImpl;
 import dev.scottsosna.neo4jfs.filesystem.attribute.BasicFileAttributesImpl;
 import dev.scottsosna.neo4jfs.filesystem.attribute.FileOwnerAttributeViewImpl;
@@ -195,53 +195,12 @@ public class DirectoryServiceImpl extends BaseNeo4jfsService implements Director
     }
 
     /**
-     * Deletes an empty directory specified by URI, similar to *nix {@code rmdir} command.
-     * @param uri  Neo4Jfs URI specifying directory to delete
-     * @throws IOException error occurred, such as directory not empty.
-     */
-    public void rmdir(final URI uri) throws IOException {
-
-        //  Get the requested pathname as ordered list of nodes.
-        List<BaseEntry> parts = prologue(uri);
-
-        //  Method does work of ensuring directory is empty before deleting it.
-        rmdirWork(uri, parts.getLast());
-    }
-
-    /**
-     * Walk directory from starting point specified by URI and deletes files/directories/everything
-     * bottom-up, similar to *nix {@code rm -rf} command
-     * @param uri Neo4Jfs URI for the directory or file to delete.
-     * @throws IOException I/O error occurred while deleting tree
-     */
-    public void rmdirRecursively(final URI uri) throws IOException {
-
-        //  Get the requested pathname as ordered list of nodes.
-        List<BaseEntry> parts = prologue(uri);
-
-        //  Last part must be a directory.
-        BaseEntry lastPart = parts.getLast();
-        switch(lastPart) {
-            case FileEntry f:
-                //  Following pattern used by file-based file system where "rmdir recursively" implies straight
-                //  file delete.
-                fileService.delete(uri);
-                break;
-            case DirectoryEntry d:
-                //  Delete all children recursively.
-                walkFileTree(uri, DirectoryDeleteFileVisitor.VISITOR_KEY);
-                break;
-            default:
-                throw new Neo4jfsUnknownEntryException(uri, lastPart.getClass().getName());
-        }
-    }
-
-    /**
      * Delete node specified by URI, file or directory
      * @param uri Neo4Jfs URI specifying either file or directory to delete.
+     * @param options options specifying how to delete
      * @throws IOException I/O errors such file/directory doesn't exist or directory not empty.
      */
-    public void delete(final URI uri) throws IOException {
+    public void delete(final URI uri, final Neo4jfsDeleteOption... options) throws IOException {
 
         //  Get the requested pathname as ordered list of nodes.
         List<BaseEntry> parts = prologue(uri);
@@ -253,7 +212,11 @@ public class DirectoryServiceImpl extends BaseNeo4jfsService implements Director
                 fileService.delete(uri);
                 break;
             case DirectoryEntry d:
-                rmdirWork(uri, lastPart);
+                if (checkForOption(Neo4jfsDeleteOption.DELETE_RECURSIVELY, options, Neo4jfsDeleteOption.class)) {
+                    FileSystemUtils.deleteRecursively(Path.of(uri));
+                } else {
+                    rmdirWork(uri, lastPart);
+                }
                 break;
             default:
                 throw new Neo4jfsUnknownEntryException(uri, lastPart.getClass().getName());
@@ -446,7 +409,7 @@ public class DirectoryServiceImpl extends BaseNeo4jfsService implements Director
                 fileService.copy(f, targetUri, targetParent, options);
                 break;
             case DirectoryEntry d:
-                if (checkForCopyOption(Neo4jfsCopyOption.RECURVSIVE_COPY, options)) {
+                if (checkForCopyOption(Neo4jfsCopyOption.COPY_RECURSIVELY, options)) {
                     //  Deep copy directory to target location.
                     FileSystemUtils.copyRecursively(Path.of(sourceUri), Path.of(targetUri));
                 } else {

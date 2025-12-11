@@ -3,6 +3,7 @@ package dev.scottsosna.neo4jfs.service;
 import dev.scottsosna.neo4jfs.database.node.BaseEntry;
 import dev.scottsosna.neo4jfs.database.node.DirectoryEntry;
 import dev.scottsosna.neo4jfs.database.node.FileEntry;
+import dev.scottsosna.neo4jfs.filesystem.Neo4jfsDeleteOption;
 
 import java.io.IOException;
 import java.net.URI;
@@ -93,26 +94,12 @@ public interface DirectoryService {
     BaseEntry parent(final URI uri);
 
     /**
-     * Deletes an empty directory specified by URI, similar to *nix {@code rmdir} command.
-     * @param uri  Neo4Jfs URI specifying directory to delete
-     * @throws IOException error occurred, such as directory not empty.
-     */
-    void rmdir(final URI uri) throws IOException;
-
-    /**
-     * Walk directory from starting point specified by URI and deletes files/directories/everything
-     * bottom-up, similar to *nix {@code rm -rf} command
-     * @param uri Neo4Jfs URI for the directory or file to delete.
-     * @throws IOException I/O error occurred while deleting tree.
-     */
-    void rmdirRecursively(final URI uri) throws IOException;
-
-    /**
      * Delete node specified by URI, file or directory
      * @param uri Neo4Jfs URI specifying either file or directory to delete.
+     * @param options options specifying how to delete
      * @throws IOException I/O errors such file/directory doesn't exist or directory not empty.
      */
-    void delete(final URI uri) throws IOException;
+    void delete(final URI uri, final Neo4jfsDeleteOption... options) throws IOException;
 
     /**
      * Check whether directory/file specified exists,

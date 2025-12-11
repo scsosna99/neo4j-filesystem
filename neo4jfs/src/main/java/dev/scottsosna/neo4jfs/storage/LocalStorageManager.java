@@ -162,12 +162,13 @@ public class LocalStorageManager implements StorageManager {
 
         //  Create path for source (existing) and target (new) files.
         Path source = generateCompletePath(fsUri, Path.of(storageId));
-        Path destination = generateCompletePath(fsUri, generateRelativePath(fsUri));
+        Path relative = generateRelativePath(fsUri);
+        Path destination = generateCompletePath(fsUri, relative);
         verifySubdirectory(destination);
 
         //  Attempt to copy file
         Files.copy(source, destination);
-        return getFileInfo(fsUri, destination.toString());
+        return getFileInfo(fsUri, relative.toString());
     }
 
     /**
