@@ -5,6 +5,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.file.FileVisitResult;
+import java.nio.file.Path;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
 
@@ -14,13 +15,13 @@ import java.nio.file.attribute.BasicFileAttributes;
  * @see java.nio.file.FileVisitor
  * @see Neo4jfsTreeWalker
  */
-public class DebuggingFileVisitor extends SimpleFileVisitor<Neo4jfsTreeWalker.NeofjfsWalkerEvent> {
+public class DumpTreeVisitor extends SimpleFileVisitor<Path> {
 
     //  How many directories deep are we.
     private int depth = 0;
 
     //  Logger used for printing out directory structure.
-    private static final Logger logger = LoggerFactory.getLogger(DebuggingFileVisitor.class);
+    private static final Logger logger = LoggerFactory.getLogger(DumpTreeVisitor.class);
 
     //  Format used for SLF4J using substitution parameters.
     private static final String SLF4J_FORMAT = "{}{} {}";
@@ -58,12 +59,12 @@ public class DebuggingFileVisitor extends SimpleFileVisitor<Neo4jfsTreeWalker.Ne
      * @throws IOException thrown when file cannot be processed
      */
     @Override
-    public FileVisitResult visitFile(final Neo4jfsTreeWalker.NeofjfsWalkerEvent file,
+    public FileVisitResult visitFile(final Path file,
                                      final BasicFileAttributes attrs)
         throws IOException
     {
         depth++;
-        logger.debug(SLF4J_FORMAT, indent(depth), "* ", file.uri());
+        logger.info(SLF4J_FORMAT, indent(depth), "* ", file.getFileName());
         depth--;
         return FileVisitResult.CONTINUE;
     }
@@ -75,10 +76,10 @@ public class DebuggingFileVisitor extends SimpleFileVisitor<Neo4jfsTreeWalker.Ne
      * @throws IOException thrown when directory cannot be exited
      */
     @Override
-    public FileVisitResult preVisitDirectory(final Neo4jfsTreeWalker.NeofjfsWalkerEvent dir,
+    public FileVisitResult preVisitDirectory(final Path dir,
                                              final BasicFileAttributes attrs) throws IOException{
         depth++;
-        logger.debug(SLF4J_FORMAT, indent(depth), "---> ", dir.uri());
+        logger.info(SLF4J_FORMAT, indent(depth), "---> ", dir.getFileName());
         return FileVisitResult.CONTINUE;
     }
 
@@ -90,17 +91,12 @@ public class DebuggingFileVisitor extends SimpleFileVisitor<Neo4jfsTreeWalker.Ne
      * @throws IOException thrown when directory cannot be exited
      */
     @Override
-    public FileVisitResult postVisitDirectory(final Neo4jfsTreeWalker.NeofjfsWalkerEvent dir,
+    public FileVisitResult postVisitDirectory(final Path dir,
                                               final IOException e)
         throws IOException
     {
-        if (e == null) {
-            depth--;
-            return FileVisitResult.CONTINUE;
-        } else {
-            // directory iteration failed
-            throw e;
-        }
+        depth--;
+        return FileVisitResult.CONTINUE;
     }
 
     /**

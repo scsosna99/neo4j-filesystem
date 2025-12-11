@@ -42,7 +42,7 @@ public class Neo4jfsDirectoryStream implements DirectoryStream<Path>, AutoClosea
      */
     private final DirectoryService service;
 
-    private List<DirectoryEntry> subdirs = List.of();
+    private List<BaseEntry> children = List.of();
 
     /**
      * Pagination: tracks how many directories returned during previous queries that are skipped.
@@ -78,7 +78,7 @@ public class Neo4jfsDirectoryStream implements DirectoryStream<Path>, AutoClosea
         BaseEntry last = pathParts.getLast();
         if (last instanceof DirectoryEntry d) {
             this.d = d;
-            queryForSubdirs();
+            queryForChildren();
         } else {
             throw new NotDirectoryException("%s: not a directory".formatted(path));
         }
@@ -87,10 +87,10 @@ public class Neo4jfsDirectoryStream implements DirectoryStream<Path>, AutoClosea
     /**
      *  Retrieve page worth of subdirectories from Neo4J.
      */
-    private void queryForSubdirs() {
+    private void queryForChildren() {
         if (!exhausted) {
-            this.subdirs = service.findSubdirs(uri, d.getId(), skippedCount, paginationMaxPerCall);
-            this.exhausted = this.subdirs == null || this.subdirs.size() < paginationMaxPerCall;
+            this.children = service.findChildren(uri, d.getId(), skippedCount, paginationMaxPerCall);
+            this.exhausted = this.children == null || this.children.size() < paginationMaxPerCall;
             skippedCount += paginationMaxPerCall;
         }
     }
@@ -122,7 +122,7 @@ public class Neo4jfsDirectoryStream implements DirectoryStream<Path>, AutoClosea
         /**
          * Internal iterator for subdirectories.
          */
-        private Iterator<DirectoryEntry> subdirIterator;
+        private Iterator<BaseEntry> childIterator;
 
         /**
          * Constructor
@@ -130,7 +130,7 @@ public class Neo4jfsDirectoryStream implements DirectoryStream<Path>, AutoClosea
          */
         Neo4jfsDirectoryIterator(Neo4jfsDirectoryStream ds) {
             this.ds = ds;
-            subdirIterator = ds.subdirs != null && !ds.subdirs.isEmpty() ? ds.subdirs.iterator() : emptyIterator();
+            childIterator = ds.children != null && !ds.children.isEmpty() ? ds.children.iterator() : emptyIterator();
         }
 
         /**
@@ -144,17 +144,17 @@ public class Neo4jfsDirectoryStream implements DirectoryStream<Path>, AutoClosea
             if (ds.closed) return false;
 
             //  Happy path: current iterator of subdirs has not been exhausted.
-            if (subdirIterator.hasNext()) return true;
+            if (childIterator.hasNext()) return true;
 
             //  Iterator exhausted, any reason to believe another query will return more?
             if (exhausted) return false;
 
             //  Possibly more, query and attempt to reload internal iterator.
-            ds.queryForSubdirs();
-            if (ds.d != null && !ds.subdirs.isEmpty()) {
+            ds.queryForChildren();
+            if (ds.d != null && !ds.children.isEmpty()) {
                 //  More found, create new internal iterator.
-                subdirIterator = ds.subdirs.iterator();
-                return subdirIterator.hasNext();
+                childIterator = ds.children.iterator();
+                return childIterator.hasNext();
             }
 
             //  no more subdirectories found so sayonara.
@@ -167,9 +167,9 @@ public class Neo4jfsDirectoryStream implements DirectoryStream<Path>, AutoClosea
         @Override
         public Path next() {
             if (uri.getPath().length() == 1) {
-                return Path.of(URI.create("%s%s".formatted(ds.uri, subdirIterator.next().getName())));
+                return Path.of(URI.create("%s%s".formatted(ds.uri, childIterator.next().getName())));
             } else {
-                return Path.of(URI.create("%s/%s".formatted(ds.uri, subdirIterator.next().getName())));
+                return Path.of(URI.create("%s/%s".formatted(ds.uri, childIterator.next().getName())));
             }
         }
 

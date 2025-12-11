@@ -29,7 +29,7 @@ public class DirectoryEntryRepositoryImpl extends BaseEntryRepositoryImpl implem
     private static final String MATCH_DIRECTORY = "(d%d:Directory {name: $name%d, root: $root%d})";
     private static final String MATCH_ROOT = "(r:Directory {name: '/', root:true})";
     private static final Map<String,Object> MATCH_ROOT_PARAMS = Map.of("name0", Neo4jfsConstants.NAME_ROOT_DIRECTORY, "root0", Boolean.TRUE);
-    private static final String QUERY_CHILDREN_PAGINATED = "MATCH (p:Directory {id: $id})-[r*0..]->(c) RETURN p, r, c SKIP $skip LIMIT $limit";
+    private static final String QUERY_CHILDREN_PAGINATED = "MATCH (p:Directory {id: $id}) OPTIONAL MATCH(p)-[r]->(c) RETURN c SKIP $skip LIMIT $limit";
     private static final String QUERY_FILES_PAGINATED = "MATCH (p:Directory {id: $id}) OPTIONAL MATCH(p)-[r:CONTAINS]->(c:File) RETURN c SKIP $skip LIMIT $limit";
     private static final String QUERY_ROOT = "MATCH(r:Directory {name: '/', root:true}) RETURN r";
     private static final String QUERY_SUBDIRS_PAGINATED = "MATCH (p:Directory {id: $id}) OPTIONAL MATCH(p)-[r:PARENT_OF]->(c:Directory) RETURN c SKIP $skip LIMIT $limit";
@@ -142,17 +142,17 @@ public class DirectoryEntryRepositoryImpl extends BaseEntryRepositoryImpl implem
      * @param directoryId Neo4J node ID of the target directory.
      * @param skip how many children to skip during pagination
      * @param limit maximum number of children to retrieve
-     * @return updated {@code DirectoryEntry} with its subdirs and files or null if no children (remaining)
+     * @return list of BaseEntry for the children or an empty list.
      */
-    public DirectoryEntry getChildren(final URI fsUri,
-                                      final String directoryId,
-                                      final int skip,
-                                      final int limit) {
-        List<DirectoryEntry> results = query(fsUri, QUERY_CHILDREN_PAGINATED,
+    public List<BaseEntry> getChildren(final URI fsUri,
+                                       final String directoryId,
+                                       final int skip,
+                                       final int limit) {
+        List<BaseEntry> results = query(fsUri, QUERY_CHILDREN_PAGINATED,
             Map.of(CYPHER_PARAM_NODEID, directoryId,
-                CYPHER_PARAM_PAGINATION_SKIP, skip + 1,
-                CYPHER_PARAM_PAGINATION_LIMIT, limit), DirectoryEntry.class);
-        return results.isEmpty() ? null : results.getFirst();
+                CYPHER_PARAM_PAGINATION_SKIP, skip,
+                CYPHER_PARAM_PAGINATION_LIMIT, limit), BaseEntry.class);
+        return results.isEmpty() ? List.of() : results;
     }
 
     /**
@@ -169,7 +169,7 @@ public class DirectoryEntryRepositoryImpl extends BaseEntryRepositoryImpl implem
                                     final int limit) {
         List<FileEntry> results = query(fsUri, QUERY_FILES_PAGINATED,
             Map.of(CYPHER_PARAM_NODEID, directoryId,
-                CYPHER_PARAM_PAGINATION_SKIP, skip + 1,
+                CYPHER_PARAM_PAGINATION_SKIP, skip,
                 CYPHER_PARAM_PAGINATION_LIMIT, limit), FileEntry.class);
         return results.isEmpty() ? List.of() : results;
     }
@@ -188,7 +188,7 @@ public class DirectoryEntryRepositoryImpl extends BaseEntryRepositoryImpl implem
                                            final int limit) {
         List<DirectoryEntry> results = query(fsUri, QUERY_SUBDIRS_PAGINATED,
             Map.of(CYPHER_PARAM_NODEID, directoryId,
-                CYPHER_PARAM_PAGINATION_SKIP, skip + 1,
+                CYPHER_PARAM_PAGINATION_SKIP, skip,
                 CYPHER_PARAM_PAGINATION_LIMIT, limit), DirectoryEntry.class);
         return results.isEmpty() ? List.of() : results;
     }

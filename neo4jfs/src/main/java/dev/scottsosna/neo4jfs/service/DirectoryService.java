@@ -53,10 +53,18 @@ public interface DirectoryService {
      * @param directoryId Neo4J node ID for the specific directory
      * @param skip pagination: how many children skipped
      * @param limit pagination: how many children returned
-     * @return updated {@code DirectoryEntry} with children collections
+     * @return list of BaseEntry for the children or an empty list.
      */
-    DirectoryEntry findChildren(final URI fsUri, final String directoryId, final int skip, final int limit);
+    List<BaseEntry> findChildren(final URI fsUri, final String directoryId, final int skip, final int limit);
 
+    /**
+     * Return a list of all children entries (files, subdirectories, etc) for the directory specified.
+     * @param fsUri Neo4Jfs base URI
+     * @param directoryId Neo4J node ID for the specific directory
+     * @param skip pagination: how many children skipped
+     * @param limit pagination: how many children returned
+     * @return list of DirectoryEntry or an empty list.
+     */
     List<DirectoryEntry> findSubdirs(final URI fsUri, final String directoryId, final int skip, final int limit);
 
     /**

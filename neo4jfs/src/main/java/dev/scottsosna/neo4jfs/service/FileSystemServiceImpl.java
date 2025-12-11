@@ -5,7 +5,6 @@ import dev.scottsosna.neo4jfs.database.model.neo4j.DatabaseAccessType;
 import dev.scottsosna.neo4jfs.database.model.neo4j.DatabaseStatusType;
 import dev.scottsosna.neo4jfs.database.model.neo4j.DatabaseType;
 import dev.scottsosna.neo4jfs.database.repository.DatabaseRepository;
-import dev.scottsosna.neo4jfs.database.repository.util.DebuggingFileVisitor;
 import dev.scottsosna.neo4jfs.exception.Neo4jfsDatabaseException;
 import dev.scottsosna.neo4jfs.storage.StorageManager;
 import org.slf4j.Logger;
@@ -40,7 +39,7 @@ public class FileSystemServiceImpl extends BaseNeo4jfsService implements FileSys
     /**
      * Logger for class.
      */
-    private final static Logger logger = LoggerFactory.getLogger(DebuggingFileVisitor.class);
+    private final static Logger logger = LoggerFactory.getLogger(FileSystemServiceImpl.class);
 
     /**
      * Constructor

@@ -68,9 +68,9 @@ public interface DirectoryEntryRepository extends BaseEntryRepository {
      * @param directoryId Neo4J node ID of the target directory.
      * @param skip how many children to skip during pagination
      * @param limit maximum number of children to retrieve
-     * @return updated {@code DirectoryEntry} with its subdirs and files or null if no children (remaining)
+     * @return list of BaseEntry for the children or an empty list.
      */
-    DirectoryEntry getChildren(final URI fsUri, final String directoryId, final int skip, final int limit);
+    List<BaseEntry> getChildren(final URI fsUri, final String directoryId, final int skip, final int limit);
 
     /**
      * Paginated retrieval files in a directory.

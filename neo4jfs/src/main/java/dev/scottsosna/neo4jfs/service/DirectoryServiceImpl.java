@@ -5,8 +5,8 @@ import dev.scottsosna.neo4jfs.database.node.DirectoryBuilder;
 import dev.scottsosna.neo4jfs.database.node.DirectoryEntry;
 import dev.scottsosna.neo4jfs.database.node.FileEntry;
 import dev.scottsosna.neo4jfs.database.repository.DirectoryEntryRepository;
-import dev.scottsosna.neo4jfs.database.repository.util.DebuggingFileVisitor;
 import dev.scottsosna.neo4jfs.database.repository.util.DirectoryDeleteFileVisitor;
+import dev.scottsosna.neo4jfs.database.repository.util.DumpTreeVisitor;
 import dev.scottsosna.neo4jfs.database.repository.util.Neo4jfsTreeWalker;
 import dev.scottsosna.neo4jfs.exception.Neo4jfsIdenticalSourceTargetException;
 import dev.scottsosna.neo4jfs.exception.Neo4jfsUnknownEntryException;
@@ -132,16 +132,24 @@ public class DirectoryServiceImpl extends BaseNeo4jfsService implements Director
      * @param directoryId Neo4J node ID for the specific directory
      * @param skip pagination: how many children skipped
      * @param limit pagination: how many children returned
-     * @return updated {@code DirectoryEntry} with children collections
+     * @return list of BaseEntry for the children or an empty list.
      */
-    public DirectoryEntry findChildren(final URI fsUri,
-                                       final String directoryId,
-                                       final int skip,
-                                       final int limit) {
+    public List<BaseEntry> findChildren(final URI fsUri,
+                                        final String directoryId,
+                                        final int skip,
+                                        final int limit) {
         checkUri(fsUri);
         return repository.getChildren(fsUri, directoryId, skip, limit);
     }
 
+    /**
+     * Return a list of all children entries (files, subdirectories, etc) for the directory specified.
+     * @param fsUri Neo4Jfs base URI
+     * @param directoryId Neo4J node ID for the specific directory
+     * @param skip pagination: how many children skipped
+     * @param limit pagination: how many children returned
+     * @return list of DirectoryEntry or an empty list.
+     */
     public List<DirectoryEntry> findSubdirs(final URI fsUri,
                                             final String directoryId,
                                             final int skip,
@@ -313,7 +321,7 @@ public class DirectoryServiceImpl extends BaseNeo4jfsService implements Director
         }
         
         //  Work done is dependent on the view requested.
-        if (clazz == FileAttributeView.class) {
+        if (clazz == BasicFileAttributeView.class) {
             //  BaseEntry implements BasicFileAttributeView.
             return new BasicFileAttributeViewImpl(pathEntries.getLast());
         } else if (clazz == FileOwnerAttributeView.class) {
@@ -362,7 +370,8 @@ public class DirectoryServiceImpl extends BaseNeo4jfsService implements Director
      */
     public void dumpTree(URI uri) throws IOException {
         checkUri(uri);
-        walkFileTree(uri, new DebuggingFileVisitor());
+        Files.walkFileTree(Path.of(uri), new DumpTreeVisitor());
+//        walkFileTree(uri, new DumpTreeVisitor());
     }
 
     /**
@@ -623,10 +632,8 @@ public class DirectoryServiceImpl extends BaseNeo4jfsService implements Director
             }
 
             //  Only empty directories are deleted/removed.
-            DirectoryEntry entry = repository.getChildren(uri, shouldBeDirectory.getId(), 0, 2);
-            if (entry == null ||
-                ((entry.getFiles() == null || entry.getFiles().isEmpty()) &&
-                    (entry.getSubdirs() == null || entry.getSubdirs().isEmpty()))) {
+            List<BaseEntry> children = repository.getChildren(uri, shouldBeDirectory.getId(), 0, 2);
+            if (children == null || children.isEmpty()) {
                 repository.delete(uri, shouldBeDirectory.getId());
             } else {
                 throw new DirectoryNotEmptyException(uri.toString());

@@ -156,7 +156,7 @@ public class Neo4jfsTreeWalker implements Closeable {
             case DirectoryEntry d:
                 //  The node returned by getStartingEntry() does not return directories files or subdirectories, so
                 //  retrieve them separately.  The results are paginated to prevent problems with large file systems.
-                DirectoryEntry withChildren = repository.getChildren(uri, d.getId(), 0, paginationMaxPerCall);
+                DirectoryEntry withChildren = null; // repository.getChildren(uri, d.getId(), 0, paginationMaxPerCall);
                 if (withChildren == null) {
                     //  Current directory has no subdirs or files so substitute the starting node so walk can continue.
                     withChildren = d;
@@ -340,7 +340,7 @@ public class Neo4jfsTreeWalker implements Closeable {
         //  Both iterators exhausted may simply mean that current page of children objects are exhausted and more are
         //  available.  Attempt to retrieve more.
         if (!current.files.hasNext() && !current.subdirs.hasNext()) {
-            DirectoryEntry withChildren = repository.getChildren(current.uri, current.dir.getId(), current.skipped, paginationMaxPerCall);
+            DirectoryEntry withChildren = null; // repository.getChildren(current.uri, current.dir.getId(), current.skipped, paginationMaxPerCall);
 
             //  It's possible - likely with anything but an extremely large file system - that the directory has no
             //  additional files, subdirs, etc. to process in which case we'll simply drop out farther down.
@@ -376,7 +376,7 @@ public class Neo4jfsTreeWalker implements Closeable {
             //  Entry retrieve _should_ be a directory, but just in case...
             if (subdirEntry instanceof DirectoryEntry d) {
                 //  Re-retrieve node, this time gettings its children as well.
-                DirectoryEntry subdirAndChildren = repository.getChildren(uri, d.getId(), 0, paginationMaxPerCall);
+                DirectoryEntry subdirAndChildren = null; // repository.getChildren(uri, d.getId(), 0, paginationMaxPerCall);
                 if (subdirAndChildren == null) {
                     subdirAndChildren = d;
                 }
