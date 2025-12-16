@@ -382,14 +382,14 @@ public class DirectoryServiceImpl extends BaseNeo4jfsService implements Director
     /**
      * Handles the workflow required for a copy, handling differences between files, directories, options, etc.
      * @param sourceUri Neo4Jfs URI for source file or directory
-     * @param source {@@code BaseEntry} representing source file or directory
+     * @param source {@code BaseEntry} representing source file or directory
      * @param sourceParent parent directory of file or directory to copy
      * @param targetUri Neo4Jfs URI for target location of copy
      * @param target {@code BaseEntry} representing target file or directory, which may be null.
      * @param targetParent parent directory of copied file or directory, which must exist.
      * @param targetName name to use for copied file or directory.
      * @param options copy options supplied by initial caller.
-     * @throws IOException
+     * @throws IOException if I/O error occurs
      */
     private void copyWork(final URI sourceUri,
                           final BaseEntry source,
