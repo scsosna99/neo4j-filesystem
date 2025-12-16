@@ -430,7 +430,7 @@ public class DirectoryServiceImpl extends BaseNeo4jfsService implements Director
      Handles the workflow required for a move, handling differences between files, directories, options, etc.
      * @param source source file or directory to move
      * @param sourceParent source parent directory
-     * @param target target of maove, which may be null
+     * @param target target of move, which may be null
      * @param targetParent target parent directory, which always exists
      * @param targetName name of target, may require renaming exsisting entry.
      * @param options "copy" options to apply to move
