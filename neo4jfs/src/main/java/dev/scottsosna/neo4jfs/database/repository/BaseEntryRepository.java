@@ -2,7 +2,10 @@ package dev.scottsosna.neo4jfs.database.repository;
 
 import dev.scottsosna.neo4jfs.database.node.BaseEntry;
 
+import java.io.IOException;
 import java.net.URI;
+import java.util.List;
+import java.util.concurrent.Callable;
 
 /**
  * Interface defining shared repository functionality.
@@ -31,13 +34,23 @@ public interface BaseEntryRepository {
     <T extends BaseEntry> void save(final URI uri, final T entry, final Class<T> clazz);
 
     /**
-     * Remove the relationship between two nodes identified by their ids.
-     *
-     * @param uri URI of the file system, using host to identify database.
-     * @param startId start node from which outgoing relationship is to be removed
-     * @param endId end node whose incoming relationship is to be removed
+     * Execute multiple database operations within single transaction.
+     * @param fsUri URI for Neo4Jfs partion
+     * @param tasks (hopefully) 2 or more database operations to execute
+     * @throws IOException if I/O fails somehow
      */
-    void deleteRelationship(final URI uri, final String startId, final String endId);
+     void save (final URI fsUri, final List<Callable> tasks) throws IOException;
+
+
+        /**
+         * Remove the relationship between two nodes identified by their ids.
+         *
+         * @param uri URI of the file system, using host to identify database.
+         * @param startId start node from which outgoing relationship is to be removed
+         * @param endId end node whose incoming relationship is to be removed
+         * @return count of relationships deleted
+         */
+    Integer deleteRelationship(final URI uri, final String startId, final String endId);
 
     /**
      * Only update last accessed timestamp for entry provided.  To guarantee inadvertent changes to entry aren't

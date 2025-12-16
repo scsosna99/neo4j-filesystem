@@ -34,6 +34,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Callable;
 
 import static dev.scottsosna.neo4jfs.config.Neo4jfsConstants.*;
 
@@ -462,7 +463,6 @@ public class DirectoryServiceImpl extends BaseNeo4jfsService implements Director
         }
 
         //  Steps are identical except for relationship which differs for directories vs. files.
-        repository.deleteRelationship(sourceUri, sourceParent.getId(), source.getId());
         source.setName(targetName);
         switch (source) {
             case FileEntry f:
@@ -475,7 +475,12 @@ public class DirectoryServiceImpl extends BaseNeo4jfsService implements Director
                 //  Totally unexpected.
                 throw new Neo4jfsUnknownEntryException(source.getClass().getName());
         }
-        repository.save(targetUri, targetParent);
+
+        //  First delete the relationship and then save the new relationship in the same transaction
+        repository.save(sourceUri, List.of(
+            (Callable<Integer>) () -> repository.deleteRelationship(sourceUri, sourceParent.getId(), source.getId()),
+            (Callable<BaseEntry>) () -> repository.save(targetUri, targetParent))
+        );
     }
 
     /**

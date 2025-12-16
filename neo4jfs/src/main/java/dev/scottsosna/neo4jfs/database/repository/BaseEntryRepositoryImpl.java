@@ -3,19 +3,23 @@ package dev.scottsosna.neo4jfs.database.repository;
 import dev.scottsosna.neo4jfs.config.Neo4jfsConfiguration;
 import dev.scottsosna.neo4jfs.config.Neo4jfsConstants;
 import dev.scottsosna.neo4jfs.database.node.BaseEntry;
+import dev.scottsosna.neo4jfs.exception.Neo4jfsDatabaseException;
 import jakarta.annotation.PostConstruct;
 import org.neo4j.ogm.config.Configuration;
 import org.neo4j.ogm.model.Result;
 import org.neo4j.ogm.session.Session;
 import org.neo4j.ogm.session.SessionFactory;
+import org.neo4j.ogm.transaction.Transaction;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Async;
 
+import java.io.IOException;
 import java.net.URI;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.StreamSupport;
 
@@ -105,18 +109,40 @@ public class BaseEntryRepositoryImpl {
     }
 
     /**
+     * Execute multiple database operations within single transaction.
+     * @param fsUri URI for Neo4Jfs partion
+     * @param tasks (hopefully) 2 or more database operations to execute
+     * @throws IOException if I/O fails somehow
+     */
+    public void save (final URI fsUri, final List<Callable> tasks) throws IOException {
+        Session session = getSessionFactory(fsUri).openSession();
+        try (Transaction tx = session.beginTransaction()) {
+            for (Callable task : tasks) {
+                task.call();
+            }
+            tx.commit();
+        } catch (Exception e) {
+            logger.error(e.getMessage(), e);
+            throw new Neo4jfsDatabaseException("Database error during transaction.", e);
+        }
+    }
+
+    /**
      * Remove the relationship between two nodes identified by their ids.
      *
      * @param uri URI of the file system, using host to identify database.
      * @param startId start node from which outgoing relationship is to be removed
      * @param endId end node whose incoming relationship is to be removed
+     * @return count of relationships deleted
      */
-    public void deleteRelationship(final URI uri,
-                                   final String startId,
-                                   final String endId) {
-        getSessionFactory(uri)
+    public Integer deleteRelationship(final URI uri,
+                                      final String startId,
+                                      final String endId) {
+        return getSessionFactory(uri)
             .openSession()
-            .query(QUERY_DELETE_RELATIONSHIP, Map.of(CYPHER_PARAM_NODEID_START, startId, CYPHER_PARAM_NODEID_END, endId));
+            .query(QUERY_DELETE_RELATIONSHIP, Map.of(CYPHER_PARAM_NODEID_START, startId, CYPHER_PARAM_NODEID_END, endId))
+            .queryStatistics()
+            .getRelationshipsDeleted();
     }
 
     /**
