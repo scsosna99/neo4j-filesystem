@@ -46,7 +46,7 @@ public class PosixFileAttributeViewImpl extends FileOwnerAttributeViewImpl imple
      */
     @Override
     public void setPermissions(Set<PosixFilePermission> perms) throws IOException {
-        entry.setPermissions(perms);
+        entry.setPosixPermissions(perms);
         persist();
     }
 

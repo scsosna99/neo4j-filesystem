@@ -77,7 +77,7 @@ public class BaseEntry {
      * Take a set of permissions and convert to its string representation.
      * @param posixPermissions Set of Posix file permissions converted into a string representation.
      */
-    public void setPermissions(final Set<PosixFilePermission> posixPermissions) {
+    public void setPosixPermissions(final Set<PosixFilePermission> posixPermissions) {
         permissions = PosixFilePermissionConverter.convert(posixPermissions);
     }
 
@@ -85,7 +85,7 @@ public class BaseEntry {
      * Permissions stored with enty is converted into a set of PosixFilePermissions.
      * @return set of PosixFilePermissions
      */
-    public Set<PosixFilePermission> getPermissions() {
+    public Set<PosixFilePermission> getPosixPermissions() {
         return PosixFilePermissionConverter.convert(permissions);
     }
 }

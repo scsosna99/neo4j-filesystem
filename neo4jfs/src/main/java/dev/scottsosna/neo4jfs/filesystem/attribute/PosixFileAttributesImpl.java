@@ -43,6 +43,6 @@ public class PosixFileAttributesImpl extends BasicFileAttributesImpl implements 
      */
     @Override
     public Set<PosixFilePermission> permissions() {
-        return entry.getPermissions();
+        return entry.getPosixPermissions();
     }
 }
