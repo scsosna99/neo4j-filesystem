@@ -28,15 +28,17 @@ public class Demo01 implements Demo  {
             //  Upload images: note that cross-filesystem copies check for existence of target unless
             //  {@code StandardCopyOption.REPLACE_EXISTING} is specified.  However, the existence check does not
             //  know whether the target is a file or directory, therefore must explicitly state target name.
-            Files.copy(Path.of("data/IMG_0308.jpg"), fs.getPath("/images/IMG_0308.jpg"));
-            Files.copy(Path.of("data/IMG_0324.jpg"), fs.getPath("/images/IMG_0324.jpg"));
-            Files.copy(Path.of("data/IMG_0398.jpg"), fs.getPath("/images/IMG_0398.jpg"));
+            Files.copy(Path.of("data/apples1.jpg"), fs.getPath("/images/apples1.jpg"));
+            Files.copy(Path.of("data/apples2.jpg"), fs.getPath("/images/apples2.jpg"));
+            Files.copy(Path.of("data/apples3.jpg"), fs.getPath("/images/apples3.jpg"));
+            Files.copy(Path.of("data/apples4.jpg"), fs.getPath("/images/apples4.jpg"));
 
             //  Make copies of original images in the "copies" directory"  Within a file system, the move
             //  can happen into a directory correctly.
-            Files.copy(fs.getPath("images/IMG_0308.jpg"), fs.getPath("copies"));
-            Files.copy(fs.getPath("images/IMG_0324.jpg"), fs.getPath("copies"));
-            Files.copy(fs.getPath("images/IMG_0398.jpg"), fs.getPath("copies"));
+            Files.copy(fs.getPath("images/apples1.jpg"), fs.getPath("copies"));
+            Files.copy(fs.getPath("images/apples2.jpg"), fs.getPath("copies"));
+            Files.copy(fs.getPath("images/apples3.jpg"), fs.getPath("copies"));
+            Files.copy(fs.getPath("images/apples4.jpg"), fs.getPath("copies"));
 
             //  Move the original directories into a "data" directory.
             Files.createDirectory(fs.getPath("/data"));
