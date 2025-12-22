@@ -84,7 +84,7 @@ public class Neo4jFileSystemProvider extends FileSystemProvider {
      * @throws IOException if the file system has been previously created.
      */
     @Override
-    public FileSystem newFileSystem(URI uri, Map<String, ?> env) throws IOException {
+    public FileSystem newFileSystem(final URI uri, final Map<String, ?> env) throws IOException {
         validateUri(uri);
 
         //  The base file system URI is "neo4jfs://<partition>/", anything else is extraneous, so only
@@ -114,7 +114,7 @@ public class Neo4jFileSystemProvider extends FileSystemProvider {
      * @throws FileSystemNotFoundException if the file system has not been created yet.
      */
     @Override
-    public FileSystem getFileSystem(URI uri) {
+    public FileSystem getFileSystem(final URI uri) {
         validateUri(uri);
 
         //  Attempt to retrieve registered file system based on truncated URI.
@@ -136,7 +136,7 @@ public class Neo4jFileSystemProvider extends FileSystemProvider {
      * @return Neo4Jfs path.
      */
     @Override
-    public Path getPath(URI uri) {
+    public Path getPath(final URI uri) {
         validateUri(uri);
 
         //  No path specified - either "neo4jfs://<partition>" or "neo4jfs://<partition>/" - defaults to root.
@@ -170,9 +170,9 @@ public class Neo4jFileSystemProvider extends FileSystemProvider {
      * @throws IOException if an I/O error occurs
      */
     @Override
-    public SeekableByteChannel newByteChannel(Path path,
-                                              Set<? extends OpenOption> options,
-                                              FileAttribute<?>... attrs) throws IOException {
+    public SeekableByteChannel newByteChannel(final Path path,
+                                              final Set<? extends OpenOption> options,
+                                              final FileAttribute<?>... attrs) throws IOException {
         return fileService.newByteChannel(path.toUri(), options, attrs);
     }
 
@@ -187,8 +187,8 @@ public class Neo4jFileSystemProvider extends FileSystemProvider {
      * @throws IOException if an I/O error occurs
      */
     @Override
-    public DirectoryStream<Path> newDirectoryStream(Path dir,
-                                                    DirectoryStream.Filter<? super Path> filter) throws IOException {
+    public DirectoryStream<Path> newDirectoryStream(final Path dir,
+                                                    final DirectoryStream.Filter<? super Path> filter) throws IOException {
         return new Neo4jfsDirectoryStream(dir);
     }
 
@@ -200,7 +200,7 @@ public class Neo4jFileSystemProvider extends FileSystemProvider {
      * @throws IOException unable to create directory
      */
     @Override
-    public void createDirectory(Path dir, FileAttribute<?>... attrs) throws IOException {
+    public void createDirectory(final Path dir, final FileAttribute<?>... attrs) throws IOException {
         directoryService.mkdir(dir.toUri());
     }
 
@@ -211,7 +211,7 @@ public class Neo4jFileSystemProvider extends FileSystemProvider {
      * @throws IOException thrown when delete fails, such as trying to delete non-empty directory.
      */
     @Override
-    public void delete(Path path) throws IOException {
+    public void delete(final Path path) throws IOException {
         directoryService.delete(path.toUri());
     }
 
@@ -224,9 +224,9 @@ public class Neo4jFileSystemProvider extends FileSystemProvider {
      * @throws IOException if an I/O error occurs
      */
     @Override
-    public void copy(Path source,
-                     Path target,
-                     CopyOption... options) throws IOException {
+    public void copy(final Path source,
+                     final Path target,
+                     final CopyOption... options) throws IOException {
         directoryService.copy(source.toUri(), target.toUri(), options);
     }
 
@@ -239,9 +239,9 @@ public class Neo4jFileSystemProvider extends FileSystemProvider {
      * @throws IOException problems moving file or directory.
      */
     @Override
-    public void move(Path source,
-                     Path target,
-                     CopyOption... options) throws IOException {
+    public void move(final Path source,
+                     final Path target,
+                     final CopyOption... options) throws IOException {
         directoryService.move(source.toUri(), target.toUri(), options);
     }
 
@@ -255,7 +255,7 @@ public class Neo4jFileSystemProvider extends FileSystemProvider {
      * @throws IOException n I/O error occurs/
      */
     @Override
-    public boolean isSameFile(Path path, Path path2) throws IOException {
+    public boolean isSameFile(final Path path, final Path path2) throws IOException {
         return path.equals(path2);
     }
 
@@ -267,7 +267,7 @@ public class Neo4jFileSystemProvider extends FileSystemProvider {
      * @throws IOException if an I/O error occurs.
      */
     @Override
-    public boolean isHidden(Path path) throws IOException {
+    public boolean isHidden(final Path path) throws IOException {
         //  TODO: what is the correct view for the hidden attributes?
         return false;
 //        return readAttributes(path, BasicFileAttributes.class).isHidden();
@@ -281,7 +281,7 @@ public class Neo4jFileSystemProvider extends FileSystemProvider {
      * @throws IOException an I/O error occurred
      */
     @Override
-    public FileStore getFileStore(Path path) throws IOException {
+    public FileStore getFileStore(final Path path) throws IOException {
         return fileSystemService.getFileStore(path.toUri());
     }
 
@@ -293,7 +293,7 @@ public class Neo4jFileSystemProvider extends FileSystemProvider {
      * @throws IOException
      */
     @Override
-    public void checkAccess(Path path, AccessMode... modes) throws IOException {
+    public void checkAccess(final Path path, final AccessMode... modes) throws IOException {
         // TODO: implement checks once security design is in place.
     }
 
@@ -307,9 +307,9 @@ public class Neo4jFileSystemProvider extends FileSystemProvider {
      * @return a file attribute view of the specific type, or {@code null} if the file does not support the specified view
      */
     @Override
-    public <V extends FileAttributeView> V getFileAttributeView(Path path,
-                                                                Class<V> type,
-                                                                LinkOption... options) {
+    public <V extends FileAttributeView> V getFileAttributeView(final Path path,
+                                                                final Class<V> type,
+                                                                final LinkOption... options) {
         //  Directory service does actual work of finding the file/directory and determining attribute view to return.
         try {
             return type.cast(directoryService.readAttributeView(path.toUri(), type, options));
@@ -329,9 +329,9 @@ public class Neo4jFileSystemProvider extends FileSystemProvider {
      * @throws IOException if an I/O error occurs
      */
     @Override
-    public <A extends BasicFileAttributes> A readAttributes(Path path,
-                                                            Class<A> type,
-                                                            LinkOption... options) throws IOException {
+    public <A extends BasicFileAttributes> A readAttributes(final Path path,
+                                                            final Class<A> type,
+                                                            final LinkOption... options) throws IOException {
 
         if (type == BasicFileAttributes.class) {
             FileAttributeView view = getFileAttributeView(path, BasicFileAttributeView.class, options);
@@ -364,9 +364,9 @@ public class Neo4jFileSystemProvider extends FileSystemProvider {
      * @throws IOException if an I/O error occurs
      */
     @Override
-    public Map<String, Object> readAttributes(Path path,
-                                              String attributes,
-                                              LinkOption... options) throws IOException {
+    public Map<String, Object> readAttributes(final Path path,
+                                              final String attributes,
+                                              final LinkOption... options) throws IOException {
 
         //  Determine view name for the requested attributes.
         String viewName = determineViewName(attributes);
@@ -390,10 +390,10 @@ public class Neo4jFileSystemProvider extends FileSystemProvider {
      * @throws IOException
      */
     @Override
-    public void setAttribute(Path path,
-                             String attribute,
-                             Object value,
-                             LinkOption... options) throws IOException {
+    public void setAttribute(final Path path,
+                             final String attribute,
+                             final Object value,
+                             final LinkOption... options) throws IOException {
         //  Determine view name for the requested attributes.
         String viewName = determineViewName(attribute);
 
@@ -415,7 +415,7 @@ public class Neo4jFileSystemProvider extends FileSystemProvider {
      * @return true if file/directory exists, false otherwise.
      */
     @Override
-    public boolean exists(Path path, LinkOption... options) {
+    public boolean exists(final Path path, final LinkOption... options) {
         return directoryService.exists(path.toUri());
     }
 
@@ -428,7 +428,7 @@ public class Neo4jFileSystemProvider extends FileSystemProvider {
      * @throws IOException exceptions for a multitude of reasons, file not found, access rights, etc.
      */
     @Override
-    public InputStream newInputStream(Path path, OpenOption... options) throws IOException {
+    public InputStream newInputStream(final Path path, final OpenOption... options) throws IOException {
         if (path instanceof Neo4jfsPath p) {
             return fileService.getInputStream(p.toUri());
         } else {
@@ -444,7 +444,7 @@ public class Neo4jFileSystemProvider extends FileSystemProvider {
      * @return output stream for writing file
      * @throws IOException exceptions for a multitude of reasons, file not found, access rights, etc.
      */
-    public OutputStream newOutputStream(Path path, OpenOption... options) throws IOException {
+    public OutputStream newOutputStream(final Path path, final OpenOption... options) throws IOException {
         if (path instanceof Neo4jfsPath p) {
             return fileService.getOutputStream(p.toUri());
         } else {

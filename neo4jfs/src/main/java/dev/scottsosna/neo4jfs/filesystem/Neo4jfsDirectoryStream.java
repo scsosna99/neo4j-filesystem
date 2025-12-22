@@ -128,7 +128,7 @@ public class Neo4jfsDirectoryStream implements DirectoryStream<Path>, AutoClosea
          * Constructor
          * @param ds owning Neo4jfsDirectoryStream
          */
-        Neo4jfsDirectoryIterator(Neo4jfsDirectoryStream ds) {
+        Neo4jfsDirectoryIterator(final Neo4jfsDirectoryStream ds) {
             this.ds = ds;
             childIterator = ds.children != null && !ds.children.isEmpty() ? ds.children.iterator() : emptyIterator();
         }

@@ -133,12 +133,12 @@ public class Neo4jFileSystem extends FileSystem {
      * @return new Neo4Jfs path
      */
     @Override
-    public Path getPath(String first, String... more) {
+    public Path getPath(final String first, final String... more) {
         return new Neo4jfsPath(this, Path.of(first, more).toString());
     }
 
     @Override
-    public PathMatcher getPathMatcher(String syntaxAndPattern) {
+    public PathMatcher getPathMatcher(final String syntaxAndPattern) {
         return null;
     }
 

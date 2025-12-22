@@ -115,7 +115,7 @@ public class Neo4jfsPath implements Path {
      * @return the name element at the specified index
      */
     @Override
-    public Path getName(int index) {
+    public Path getName(final int index) {
         return path.getName(index);
     }
 
@@ -126,7 +126,7 @@ public class Neo4jfsPath implements Path {
      * @return a new Path object that is a subsequence of the name elements in this Path
      */
     @Override
-    public Path subpath(int beginIndex, int endIndex) {
+    public Path subpath(final int beginIndex, final int endIndex) {
         return new Neo4jfsPath(fs, path.subpath(beginIndex, endIndex).toString());
     }
 
@@ -136,7 +136,7 @@ public class Neo4jfsPath implements Path {
      * @return {@code true} if this path starts with the given path, {@code false} otherwise
      */
     @Override
-    public boolean startsWith(Path other) {
+    public boolean startsWith(final Path other) {
         return path.startsWith(other);
     }
 
@@ -146,7 +146,7 @@ public class Neo4jfsPath implements Path {
      * @return {@code true} if this path ends with the given path, {@code false} otherwise
      */
     @Override
-    public boolean endsWith(Path other) {
+    public boolean endsWith(final Path other) {
         return path.endsWith(other);
     }
 
@@ -167,7 +167,7 @@ public class Neo4jfsPath implements Path {
      * @return the resulting path
      */
     @Override
-    public Path resolve(Path other) {
+    public Path resolve(final Path other) {
         switch (other) {
             case Neo4jfsPath npath:
                 return new Neo4jfsPath(fs, path.resolve(npath.path));
@@ -182,7 +182,7 @@ public class Neo4jfsPath implements Path {
      * @return the resulting relative path, or an empty path if both paths are equal
      */
     @Override
-    public Path relativize(Path other) {
+    public Path relativize(final Path other) {
         switch (other) {
             case Neo4jfsPath npath:
                 return new Neo4jfsPath(fs, path.relativize(npath.path));
@@ -216,7 +216,7 @@ public class Neo4jfsPath implements Path {
      * @throws IOException if the file does not exist or an I/O error occurs
      */
     @Override
-    public Path toRealPath(LinkOption... options) throws IOException {
+    public Path toRealPath(final LinkOption... options) throws IOException {
         return this;
     }
 
@@ -229,7 +229,9 @@ public class Neo4jfsPath implements Path {
      * @throws IOException if an I/O error occurs
      */
     @Override
-    public WatchKey register(WatchService watcher, WatchEvent.Kind<?>[] events, WatchEvent.Modifier... modifiers) throws IOException {
+    public WatchKey register(final WatchService watcher,
+                             final WatchEvent.Kind<?>[] events,
+                             final WatchEvent.Modifier... modifiers) throws IOException {
         throw new UnsupportedOperationException();
     }
 
@@ -240,7 +242,7 @@ public class Neo4jfsPath implements Path {
      * less than the argument, or a value greater than zero if this path is lexicographically greater than the argument
      */
     @Override
-    public int compareTo(Path other) {
+    public int compareTo(final Path other) {
         return path.compareTo(other);
     }
 
@@ -250,7 +252,7 @@ public class Neo4jfsPath implements Path {
      * @return true if, and only if, the given object is a Path that is identical to this Path
      */
     @Override
-    public boolean equals(Object other) {
+    public boolean equals(final Object other) {
         if (other instanceof Neo4jfsPath neo4jfsPath) {
             return  Objects.equals(this.fs, neo4jfsPath.fs) &&
                     Objects.equals(this.pathString, neo4jfsPath.pathString);
