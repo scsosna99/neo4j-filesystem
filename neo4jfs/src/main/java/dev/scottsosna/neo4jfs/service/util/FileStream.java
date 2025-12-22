@@ -68,7 +68,7 @@ public class FileStream implements Iterable<FileEntry>, Closeable, AutoCloseable
      */
     private void queryForFiles() {
         if (!exhausted) {
-            this.files = service.findFiles(fsUri, d.getId(), skippedCount, paginationMaxPerCall);
+            this.files = service.findFiles(fsUri, d, skippedCount, paginationMaxPerCall);
             this.exhausted = this.files == null || this.files.size() < paginationMaxPerCall;
             skippedCount += paginationMaxPerCall;
         }

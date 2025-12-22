@@ -3,6 +3,7 @@ package dev.scottsosna.neo4jfs.database.repository;
 import dev.scottsosna.neo4jfs.config.Neo4jfsConfiguration;
 import dev.scottsosna.neo4jfs.config.Neo4jfsConstants;
 import dev.scottsosna.neo4jfs.database.node.BaseEntry;
+import dev.scottsosna.neo4jfs.database.node.DirectoryEntry;
 import dev.scottsosna.neo4jfs.exception.Neo4jfsDatabaseException;
 import jakarta.annotation.PostConstruct;
 import org.neo4j.ogm.config.Configuration;
@@ -54,6 +55,7 @@ public class BaseEntryRepositoryImpl {
     /**
      * Various Cypher queries or chunks used for building complete query.
      */
+    private static final String MATCH_DIRECTORY_NONROOT = "(d%d:Directory {name: $name%d, root: false})";
     private static final String MATCH_ENTRY = "(d%d {name: $name%d})";
     private static final String MATCH_FILE = "(d%d:File {name: $name%d})";
     private static final String QUERY_DIRECTORY_AND_CHILD = "MATCH (p:Directory {id: $id})-[]->(c {name: $name}) RETURN p,c";
@@ -61,6 +63,8 @@ public class BaseEntryRepositoryImpl {
     private static final String QUERY_DELETE_RELATIONSHIP = "MATCH (start {id: $startId})-[r]-(end {id: $endId}) DELETE r";
     private static final String RELATIONSHIP_ENTRY = "-[]->";
     private static final String RELATIONSHIP_ENTRY_OPTIONAL = "OPTIONAL MATCH (d%d)-[]->";
+    private static final String RELATIONSHIP_LINK_DIRECTORY = "-[:PARENT_OF]->";
+    private static final String RELATIONSHIP_LINK_DIRECTORY_OPTIONAL = "OPTIONAL MATCH (d%d)-[:PARENT_OF]->";
     private static final String RELATIONSHIP_LINK_FILE = "-[:CONTAINS]->";
     private static final String RELATIONSHIP_LINK_FILE_OPTIONAL = "OPTIONAL MATCH (d%d)-[:CONTAINS]->";
 
@@ -68,7 +72,7 @@ public class BaseEntryRepositoryImpl {
 
     /**
      * Constructor
-     * @param config configuration bean hold Neo4J connection and authentication credentials.
+     * @param config configuration bean holds Neo4J connection and authentication credentials.
      */
     public BaseEntryRepositoryImpl(Neo4jfsConfiguration config) {
         super();
@@ -105,7 +109,6 @@ public class BaseEntryRepositoryImpl {
                                            final Class<T> clazz) {
         updateTimestamps(entry);
         getSessionFactory(fsUri).openSession().save(entry);
-        entry.setFsUri(fsUri);
     }
 
     /**
@@ -252,7 +255,6 @@ public class BaseEntryRepositoryImpl {
                                                   final Class<T> clazz) {
         var results = getSessionFactory(fsUri).openSession().query(clazz, query, parameters);
         List<T> toReturn = StreamSupport.stream(results.spliterator(), false).toList();
-        toReturn.forEach(e -> e.setFsUri(fsUri));
         return toReturn;
     }
 
@@ -322,7 +324,39 @@ public class BaseEntryRepositoryImpl {
     }
 
     /**
-     * Extends Cypher query to navigate from a directory to any entry which may or may not exists.
+     * Extends Cypher query to navigate from a directory to a subdirectory which must exist.
+     * @param sbMatch builder for query
+     * @param sbReturn builder for return clause
+     * @param queryParams map of parameters to pass to Cypher query
+     * @param entryName entry name to match
+     * @param index depth of navigation, used for parameter names and return
+     */
+    protected void addMatchDirectory(final StringBuilder sbMatch,
+                                     final StringBuilder sbReturn,
+                                     final Map<String,Object> queryParams,
+                                     final String entryName,
+                                     final int index) {
+        addMatchWork(sbMatch, sbReturn, queryParams, entryName, index, RELATIONSHIP_LINK_DIRECTORY, MATCH_DIRECTORY_NONROOT);
+    }
+
+    /**
+     * Extends Cypher query to navigate from a directory to a subdirectory which may or may not exist.
+     * @param sbMatch builder for query
+     * @param sbReturn builder for return clause
+     * @param queryParams map of parameters to pass to Cypher query
+     * @param entryName entry name to match
+     * @param index depth of navigation, used for parameter names and return
+     */
+    protected void addMatchDirectoryOptional(final StringBuilder sbMatch,
+                                             final StringBuilder sbReturn,
+                                             final Map<String,Object> queryParams,
+                                             final String entryName,
+                                             final int index) {
+        addMatchWork(sbMatch, sbReturn, queryParams, entryName, index, RELATIONSHIP_LINK_DIRECTORY_OPTIONAL, MATCH_DIRECTORY_NONROOT);
+    }
+
+    /**
+     * Extends Cypher query to navigate from a directory to any entry which may or may not exist.
      * @param sbMatch builder for query
      * @param sbReturn builder for return clause
      * @param queryParams map of parameters to pass to Cypher query
@@ -338,7 +372,7 @@ public class BaseEntryRepositoryImpl {
     }
 
     /**
-     * Extends Cypher query to navigate from a directory to a file which may or may not exists.
+     * Extends Cypher query to navigate from a directory to a file which may or may not exist.
      * @param sbMatch builder for query
      * @param sbReturn builder for return clause
      * @param queryParams map of parameters to pass to Cypher query
@@ -351,6 +385,57 @@ public class BaseEntryRepositoryImpl {
                                         final String entryName,
                                         final int index) {
         addMatchWork(sbMatch, sbReturn, queryParams, entryName, index, RELATIONSHIP_LINK_FILE_OPTIONAL, MATCH_FILE);
+    }
+
+    /**
+     * The entries being prepared are siblings - files or directories - within the same parent directory, in which
+     * case each is prepared using the same parent
+     * @param siblings list of sibling entries being prepared
+     * @param fsURI the URI of the file system
+     * @param parent the parent directory of the siblings
+     * @return entries list for chaining purposes
+     */
+    protected <T extends BaseEntry> List<T> prepareEntriesSiblings(final List<T> siblings,
+                                                                   final URI fsURI,
+                                                                   final DirectoryEntry parent) {
+        siblings.forEach(e -> prepareEntry(e, fsURI, parent));
+        return siblings;
+    }
+
+    /**
+     * The entries being prepared represent a tree of entries returned by a path query, starting with root and traversing
+     * through 0 or more subdirectories until the leaf node is reached, either a file or directory, in which case
+     * each entry is parepared with the previous node as its parent.
+     * @param entries list of oath entries being prepared
+     * @param fsURI the URI of the file system
+     * @return entries list for chaining purposes
+     */
+    protected List<BaseEntry> prepareEntriesTree(final List<BaseEntry> entries,
+                                                 final URI fsURI) {
+        if (entries != null && !entries.isEmpty()) {
+            DirectoryEntry parent = (DirectoryEntry) entries.getFirst();
+            for (BaseEntry one : entries) {
+                prepareEntry(one, fsURI, parent);
+                if (one instanceof DirectoryEntry d) parent = d;
+            }
+        }
+
+        return entries;
+    }
+
+    /**
+     * Prepares the entry (file or directory) for use by assigning derived properties that are used in Neo4Jfs operations.
+     * @param entry the entry being prepared
+     * @param fsUri the URI of the file system
+     * @param parent the parent directory of the entry (file, directory, whatever) being prepared.
+     * @return prepared entry for chaining
+     */
+    protected <T extends BaseEntry> T prepareEntry (final T entry,
+                                                    final URI fsUri,
+                                                    final DirectoryEntry parent) {
+        entry.setFsUri(fsUri);
+        entry.deriveInheritedPermissions(parent);
+        return entry;
     }
 
     /**

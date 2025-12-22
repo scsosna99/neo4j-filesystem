@@ -33,7 +33,6 @@ public class DirectoryEntryRepositoryImpl extends BaseEntryRepositoryImpl implem
     private static final String QUERY_FILES_PAGINATED = "MATCH (p:Directory {id: $id}) OPTIONAL MATCH(p)-[r:CONTAINS]->(c:File) RETURN c SKIP $skip LIMIT $limit";
     private static final String QUERY_ROOT = "MATCH(r:Directory {name: '/', root:true}) RETURN r";
     private static final String QUERY_SUBDIRS_PAGINATED = "MATCH (p:Directory {id: $id}) OPTIONAL MATCH(p)-[r:PARENT_OF]->(c:Directory) RETURN c SKIP $skip LIMIT $limit";
-    private static final String RELATIONSHIP_CONTAINS = "-[:CONTAINS]->";
     private static final String RELATIONSHIP_PARENT_OF = "-[:PARENT_OF]->";
 
     /**
@@ -60,6 +59,7 @@ public class DirectoryEntryRepositoryImpl extends BaseEntryRepositoryImpl implem
                                   final DirectoryEntry toCreate,
                                   final DirectoryEntry parent) {
         save(fsUri, toCreate, DirectoryEntry.class);
+        prepareEntry(toCreate, fsUri, parent);
         parent.setSubdirs(List.of(toCreate));
         save(fsUri, parent, DirectoryEntry.class);
         return toCreate;
@@ -71,6 +71,8 @@ public class DirectoryEntryRepositoryImpl extends BaseEntryRepositoryImpl implem
      * @return {@link DirectoryEntry} for root directory.
      */
     public DirectoryEntry createRoot(final URI fsUri) {
+
+        //  Create new root with a bunch of default values.
         DirectoryEntry d = new DirectoryBuilder()
             .name(ROOT_DIRECTORY_NAME)
             .userName(Neo4jfsConstants.NAME_ADMIN_USER)
@@ -78,7 +80,10 @@ public class DirectoryEntryRepositoryImpl extends BaseEntryRepositoryImpl implem
             .permissions(config.defaultRootPermissions)
             .root(true)
             .build();
+
+        //  Persist and "prepare" by adding transient values.
         save(fsUri, d, DirectoryEntry.class);
+        prepareEntry(d, fsUri, null);
 
         return d;
     }
@@ -110,8 +115,28 @@ public class DirectoryEntryRepositoryImpl extends BaseEntryRepositoryImpl implem
      * @param endNodeOptional indicates file or directory is optional.
      * @return list of {@link BaseEntry} objects for the file/directories or empty list if something doesn't exist.
      */
-    public List<BaseEntry> find(final URI fsUri, final Path path, final boolean endNodeOptional) {
-        return queryPath(fsUri, path, (endNodeOptional) ? this::addMatchEntryOptional : this::addMatchEntry);
+    public List<BaseEntry> find(final URI fsUri,
+                                final Path path,
+                                final boolean endNodeOptional) {
+        List<BaseEntry> entries = queryPath(fsUri, path, (endNodeOptional) ? this::addMatchEntryOptional : this::addMatchEntry);
+        prepareEntriesTree(entries, fsUri);
+        return entries;
+    }
+
+    /**
+     * Fetch the individual entries for a directory path.  If the final directory is optional, then the entries
+     * for all parent directories are returned.  An empty list is returned if the parent directories don't exist.
+     * @param fsUri Neo4Jfs file system URI
+     * @param path Neo4Jfs path to the specified file or directory.
+     * @param endNodeOptional indicates file or directory is optional.
+     * @return list of {@link BaseEntry} objects for the file/directories or empty list if something doesn't exist.
+     */
+    public List<BaseEntry> findDirectory(final URI fsUri,
+                                         final Path path,
+                                         final boolean endNodeOptional) {
+        List<BaseEntry> entries = queryPath(fsUri, path, (endNodeOptional) ? this::addMatchDirectoryOptional : this::addMatchDirectory);
+        prepareEntriesTree(entries, fsUri);
+        return entries;
     }
 
     /**
@@ -122,8 +147,12 @@ public class DirectoryEntryRepositoryImpl extends BaseEntryRepositoryImpl implem
      * @param endNodeOptional indicates file or directory is optional.
      * @return list of {@link BaseEntry} objects for the file/directories or empty list if something doesn't exist.
      */
-    public List<BaseEntry> findFile(final URI fsUri, final Path path, final boolean endNodeOptional) {
-        return queryPath(fsUri, path, (endNodeOptional) ? this::addMatchFileOptional : this::addMatchFile);
+    public List<BaseEntry> findFile(final URI fsUri,
+                                    final Path path,
+                                    final boolean endNodeOptional) {
+        List<BaseEntry> entries = queryPath(fsUri, path, (endNodeOptional) ? this::addMatchFileOptional : this::addMatchFile);
+        prepareEntriesTree(entries, fsUri);
+        return entries;
     }
 
     /**
@@ -133,64 +162,52 @@ public class DirectoryEntryRepositoryImpl extends BaseEntryRepositoryImpl implem
      */
     public DirectoryEntry findRoot(final URI fsUri) {
         List<DirectoryEntry> d = query(fsUri, QUERY_ROOT, DirectoryEntry.class);
-        return (d.isEmpty() ? null : d.getFirst());
+        return (d.isEmpty() ? null : prepareEntry (d.getFirst(), fsUri, null));
     }
 
     /**
      * Paginated retrieval of directory's children.
      * @param fsUri Neo4Jfs file system URI
-     * @param directoryId Neo4J node ID of the target directory.
+     * @param parent specific directory for which children are returned
      * @param skip how many children to skip during pagination
      * @param limit maximum number of children to retrieve
      * @return list of BaseEntry for the children or an empty list.
      */
     public List<BaseEntry> getChildren(final URI fsUri,
-                                       final String directoryId,
+                                       final DirectoryEntry parent,
                                        final int skip,
                                        final int limit) {
-        List<BaseEntry> results = query(fsUri, QUERY_CHILDREN_PAGINATED,
-            Map.of(CYPHER_PARAM_NODEID, directoryId,
-                CYPHER_PARAM_PAGINATION_SKIP, skip,
-                CYPHER_PARAM_PAGINATION_LIMIT, limit), BaseEntry.class);
-        return results.isEmpty() ? List.of() : results;
+        return getSiblingsWork(fsUri, QUERY_CHILDREN_PAGINATED, parent, skip, limit, BaseEntry.class);
     }
 
     /**
      * Paginated retrieval files in a directory.
      * @param fsUri Neo4Jfs file system URI
-     * @param directoryId Neo4J node ID of the target directory.
+     * @param parent specific directory for which children are returned
      * @param skip how many files to skip during pagination
      * @param limit maximum number of files to retrieve
      * @return updated {@code DirectoryEntry} with its files or null if no files (remaining).
      */
     public List<FileEntry> getFiles(final URI fsUri,
-                                    final String directoryId,
+                                    final DirectoryEntry parent,
                                     final int skip,
                                     final int limit) {
-        List<FileEntry> results = query(fsUri, QUERY_FILES_PAGINATED,
-            Map.of(CYPHER_PARAM_NODEID, directoryId,
-                CYPHER_PARAM_PAGINATION_SKIP, skip,
-                CYPHER_PARAM_PAGINATION_LIMIT, limit), FileEntry.class);
-        return results.isEmpty() ? List.of() : results;
+        return getSiblingsWork(fsUri, QUERY_FILES_PAGINATED, parent, skip, limit, FileEntry.class);
     }
 
     /**
      * Paginated retrieval directory's subdirectories.
      * @param fsUri Neo4Jfs file system URI
-     * @param directoryId Neo4J node ID of the target directory.
+     * @param parent specific directory for which sub-directories are returned
      * @param skip how many subdirs to skip during pagination
      * @param limit maximum number of subdirs to retrieve
      * @return updated {@code DirectoryEntry} with its subdirectories or null if no subdirectories (remaining).
      */
     public List<DirectoryEntry> getSubdirs(final URI fsUri,
-                                           final String directoryId,
+                                           final DirectoryEntry parent,
                                            final int skip,
                                            final int limit) {
-        List<DirectoryEntry> results = query(fsUri, QUERY_SUBDIRS_PAGINATED,
-            Map.of(CYPHER_PARAM_NODEID, directoryId,
-                CYPHER_PARAM_PAGINATION_SKIP, skip,
-                CYPHER_PARAM_PAGINATION_LIMIT, limit), DirectoryEntry.class);
-        return results.isEmpty() ? List.of() : results;
+        return getSiblingsWork(fsUri, QUERY_SUBDIRS_PAGINATED, parent, skip, limit, DirectoryEntry.class);
     }
 
     /**
@@ -232,6 +249,30 @@ public class DirectoryEntryRepositoryImpl extends BaseEntryRepositoryImpl implem
     public boolean pathExists(final URI uri) {
         return !queryPath(uri).isEmpty();
     }
+
+    /**
+     * Does the actual work of returning siblings in a parent directory, files or directories or both based on query
+     * @param fsUri Neo4Jfs file system URI
+     * @param query Cypher query to execute
+     * @param parent specific directory for which children are returned
+     * @param skip how many children to skip during pagination
+     * @param limit maximum number of children to retrieve
+     * @return list of BaseEntry for the children or an empty list.
+     */
+    private <T extends BaseEntry> List<T> getSiblingsWork(final URI fsUri,
+                                                          final String query,
+                                                          final DirectoryEntry parent,
+                                                          final int skip,
+                                                          final int limit,
+                                                          final Class<T> clazz) {
+        List<T> results = query(fsUri, query,
+            Map.of(CYPHER_PARAM_NODEID, parent.getId(),
+                CYPHER_PARAM_PAGINATION_SKIP, skip,
+                CYPHER_PARAM_PAGINATION_LIMIT, limit), clazz);
+        prepareEntriesSiblings(results, fsUri, parent);
+        return results;
+    }
+
 
     /**
      * Query Neo4J for BaseEntry objects in the path specified.
@@ -291,39 +332,18 @@ public class DirectoryEntryRepositoryImpl extends BaseEntryRepositoryImpl implem
     /**
      * Return the leaf node of the path specified.
      * @param fsUri Neo4Jfs file system URI
-     * @param path Neo4jfs path to the specified file or directory.
+     * @param path Neo4Jfs path to the specified file or directory.
      * @return the leaf node or null if path doesn't exist.
      */
     private BaseEntry queryLeaf(final URI fsUri, final Path path) {
 
-        //  Break the URI's path into its constituent parts.
-        List<String> paths = StreamSupport.stream(path.spliterator(), false).map(Path::toString).toList();
-
-        //  Happy path: only a single path and its '/', meaning nothing specified other than host (file system), therefore
-        //  just return the root node.
-        if (paths.isEmpty() || (paths.size() == 1 && paths.getFirst().equals(ROOT_DIRECTORY_NAME))) {
-            return findRoot(fsUri);
+        List<BaseEntry> entries = findDirectory(fsUri, path, false);
+        if (!entries.isEmpty()) {
+            prepareEntriesTree(entries, fsUri);
+            return entries.getLast();
+        } else {
+            return null;
         }
-
-        //  TODO: What the hell is this doing?  Why can't we use an existing find() method that handles optionality?
-        //  TODO: and why entries.getFirst() and not entries.getLast()?  Needs to be readdressed.
-        //  Dynamically build cypher query that navigates from directory to directory.
-        StringBuilder sbMatch = new StringBuilder("MATCH").append(MATCH_ROOT);
-        int a = 1;
-        for (String one: paths) {
-            sbMatch
-                .append("-[:PARENT_OF]->(d")
-                .append(a)
-                .append(":Directory {name: '")
-                .append(one)
-                .append("', root: false})");
-            a++;
-        }
-        sbMatch.append("-[p*0..]->(c) RETURN d").append(a- 1).append(",p,c");
-
-        //  Concatenate and query the whole thing
-        List<DirectoryEntry> entries = query(fsUri, sbMatch.toString(), DirectoryEntry.class);
-        return entries.isEmpty() ? null : entries.getFirst();
     }
 
     /**
@@ -335,12 +355,12 @@ public class DirectoryEntryRepositoryImpl extends BaseEntryRepositoryImpl implem
      * @param isRoot whether the directory is the root directory
      * @param index depth of navigation, used for parameter names and return
      */
-    private void addMatchDirectory(StringBuilder sbMatch,
-                                   StringBuilder sbReturn,
-                                   Map<String,Object> queryParams,
-                                   String directoryName,
-                                   Boolean isRoot,
-                                   int index) {
+    private void addMatchDirectory(final StringBuilder sbMatch,
+                                   final StringBuilder sbReturn,
+                                   final Map<String,Object> queryParams,
+                                   final String directoryName,
+                                   final Boolean isRoot,
+                                   final int index) {
         sbMatch
             .append(RELATIONSHIP_PARENT_OF)
             .append(MATCH_DIRECTORY.formatted(index, index, index));

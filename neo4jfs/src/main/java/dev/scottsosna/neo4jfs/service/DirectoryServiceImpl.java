@@ -130,33 +130,33 @@ public class DirectoryServiceImpl extends BaseNeo4jfsService implements Director
     /**
      * Return a directory with a paginated list of children (files, subdirectories)
      * @param fsUri Neo4Jfs base URI
-     * @param directoryId Neo4J node ID for the specific directory
+     * @param dir specific directory for which children are returned
      * @param skip pagination: how many children skipped
      * @param limit pagination: how many children returned
      * @return list of BaseEntry for the children or an empty list.
      */
     public List<BaseEntry> findChildren(final URI fsUri,
-                                        final String directoryId,
+                                        final DirectoryEntry dir,
                                         final int skip,
                                         final int limit) {
         checkUri(fsUri);
-        return repository.getChildren(fsUri, directoryId, skip, limit);
+        return repository.getChildren(fsUri, dir, skip, limit);
     }
 
     /**
      * Return a list of all children entries (files, subdirectories, etc) for the directory specified.
      * @param fsUri Neo4Jfs base URI
-     * @param directoryId Neo4J node ID for the specific directory
+     * @param parent specific directory for which children are returned
      * @param skip pagination: how many children skipped
      * @param limit pagination: how many children returned
      * @return list of DirectoryEntry or an empty list.
      */
     public List<DirectoryEntry> findSubdirs(final URI fsUri,
-                                            final String directoryId,
+                                            final DirectoryEntry parent,
                                             final int skip,
                                             final int limit) {
         checkUri(fsUri);
-        return repository.getSubdirs(fsUri, directoryId, skip, limit);
+        return repository.getSubdirs(fsUri, parent, skip, limit);
     }
 
     /**
@@ -252,17 +252,17 @@ public class DirectoryServiceImpl extends BaseNeo4jfsService implements Director
     /**
      * Return a directory with a paginated list of subdirectories
      * @param fsUri Neo4Jfs base URI
-     * @param directoryId Neo4J node ID for the specific directory
+     * @param parent directory for which filess are returned
      * @param skip pagination: how many subdirs skipped
      * @param limit pagination: how many subdirs returned
      * @return updated {@code DirectoryEntry} with children collections
      */
     public List<FileEntry> findFiles(final URI fsUri,
-                                     final String directoryId,
+                                     final DirectoryEntry parent,
                                      final int skip,
                                      final int limit) {
         checkUri(fsUri);
-        return repository.getFiles(fsUri, directoryId, skip, limit);
+        return repository.getFiles(fsUri, parent, skip, limit);
     }
 
     /**
@@ -600,7 +600,7 @@ public class DirectoryServiceImpl extends BaseNeo4jfsService implements Director
             }
 
             //  Only empty directories are deleted/removed.
-            List<BaseEntry> children = repository.getChildren(uri, shouldBeDirectory.getId(), 0, 2);
+            List<BaseEntry> children = repository.getChildren(uri, d, 0, 2);
             if (children == null || children.isEmpty()) {
                 repository.delete(uri, shouldBeDirectory.getId());
             } else {

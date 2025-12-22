@@ -43,7 +43,6 @@ public class BaseEntry {
     /**
      * Posix permissions in their typical representation, e.g., "rwxr-xr-x".
      */
-    @Getter(AccessLevel.NONE)
     @Setter(AccessLevel.NONE)
     String permissions;
 
@@ -67,11 +66,24 @@ public class BaseEntry {
      */
     boolean hidden;
 
+
+    @Transient
+    @Setter(AccessLevel.NONE)
+    String inheritedPermissions;
+
     /**
      * In which Neo4Jfs file system is this entry located?
      */
     @Transient
     URI fsUri;
+
+    /**
+     * Permissions stored with enty is converted into a set of PosixFilePermissions.
+     * @return set of PosixFilePermissions
+     */
+    public Set<PosixFilePermission> getPosixPermissions() {
+        return PosixFilePermissionConverter.convert(permissions != null ? permissions : inheritedPermissions);
+    }
 
     /**
      * Take a set of permissions and convert to its string representation.
@@ -82,10 +94,18 @@ public class BaseEntry {
     }
 
     /**
-     * Permissions stored with enty is converted into a set of PosixFilePermissions.
-     * @return set of PosixFilePermissions
+     * Inherited permissions are derived when the file/directory itself has no permissions defined on it, meaning
+     * that the containing directory - the parent of the file or directory - provides its permissions (which themselves
+     * may be inherited).
+     * @param parent the parent directory of this entry (file or directory).
      */
-    public Set<PosixFilePermission> getPosixPermissions() {
-        return PosixFilePermissionConverter.convert(permissions);
+    public void deriveInheritedPermissions(final DirectoryEntry parent) {
+        if (permissions == null && parent != null) {
+            if (parent.getInheritedPermissions() != null) {
+                inheritedPermissions = parent.getInheritedPermissions();
+            } else {
+                inheritedPermissions = parent.getPermissions();
+            }
+        }
     }
 }

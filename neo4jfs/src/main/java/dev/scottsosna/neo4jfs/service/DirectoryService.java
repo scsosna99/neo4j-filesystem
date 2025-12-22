@@ -50,22 +50,22 @@ public interface DirectoryService {
     /**
      * Return a directory with a paginated list of children (files, subdirectories)
      * @param fsUri Neo4Jfs base URI
-     * @param directoryId Neo4J node ID for the specific directory
+     * @param parent specific directory for which children are returned
      * @param skip pagination: how many children skipped
      * @param limit pagination: how many children returned
      * @return list of BaseEntry for the children or an empty list.
      */
-    List<BaseEntry> findChildren(final URI fsUri, final String directoryId, final int skip, final int limit);
+    List<BaseEntry> findChildren(final URI fsUri, final DirectoryEntry parent, final int skip, final int limit);
 
     /**
      * Return a list of all children entries (files, subdirectories, etc) for the directory specified.
      * @param fsUri Neo4Jfs base URI
-     * @param directoryId Neo4J node ID for the specific directory
+     * @param parent specific directory for which children are returned
      * @param skip pagination: how many children skipped
      * @param limit pagination: how many children returned
      * @return list of DirectoryEntry or an empty list.
      */
-    List<DirectoryEntry> findSubdirs(final URI fsUri, final String directoryId, final int skip, final int limit);
+    List<DirectoryEntry> findSubdirs(final URI fsUri, final DirectoryEntry parent, final int skip, final int limit);
 
     /**
      * Copy file or directory to new location
@@ -119,12 +119,12 @@ public interface DirectoryService {
     /**
      * Return a directory with a paginated list of subdirectories
      * @param fsUri Neo4Jfs base URI
-     * @param directoryId Neo4J node ID for the specific directory
+     * @parent specific directory for which files are returned
      * @param skip pagination: how many subdirs skipped
      * @param limit pagination: how many subdirs returned
      * @return updated {@code DirectoryEntry} with children collections
      */
-    List<FileEntry> findFiles(final URI fsUri, final String directoryId, final int skip, final int limit);
+    List<FileEntry> findFiles(final URI fsUri, final DirectoryEntry parent, final int skip, final int limit);
 
     /**
      * Returns the entry specified by URI as BasicFileAttributeView, needed by file system provider.

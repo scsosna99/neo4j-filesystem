@@ -65,32 +65,32 @@ public interface DirectoryEntryRepository extends BaseEntryRepository {
     /**
      * Paginated retrieval of directory's children.
      * @param fsUri Neo4Jfs file system URI
-     * @param directoryId Neo4J node ID of the target directory.
+     * @param parent specific directory for which children are returned
      * @param skip how many children to skip during pagination
      * @param limit maximum number of children to retrieve
      * @return list of BaseEntry for the children or an empty list.
      */
-    List<BaseEntry> getChildren(final URI fsUri, final String directoryId, final int skip, final int limit);
+    List<BaseEntry> getChildren(final URI fsUri, final DirectoryEntry parent, final int skip, final int limit);
 
     /**
      * Paginated retrieval files in a directory.
      * @param fsUri Neo4Jfs file system URI
-     * @param directoryId Neo4J node ID of the target directory.
+     * @param parent specific directory for which children are returned
      * @param skip how many files to skip during pagination
      * @param limit maximum number of files to retrieve
      * @return updated {@code DirectoryEntry} with its files or null if no files (remaining).
      */
-    List<FileEntry> getFiles(final URI fsUri, final String directoryId, final int skip, final int limit);
+    List<FileEntry> getFiles(final URI fsUri, final DirectoryEntry parent, final int skip, final int limit);
 
     /**
      * Paginated retrieval directory's subdirectories.
      * @param fsUri Neo4Jfs file system URI
-     * @param directoryId Neo4J node ID of the target directory.
+     * @param parent specific directory for which children are returned
      * @param skip how many subdirs to skip during pagination
      * @param limit maximum number of subdirs to retrieve
      * @return updated {@code DirectoryEntry} with its subdirectories or null if no subdirectories (remaining).
      */
-    List<DirectoryEntry> getSubdirs(final URI fsUri, final String directoryId, final int skip, final int limit);
+    List<DirectoryEntry> getSubdirs(final URI fsUri, final DirectoryEntry parent, final int skip, final int limit);
 
     /**
      * Delete a directory entry from Neo4J.  NOTE: this is brute-force and does not check for existing subdirs/files.

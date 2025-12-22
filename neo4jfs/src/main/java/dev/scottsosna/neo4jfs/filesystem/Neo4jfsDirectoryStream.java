@@ -89,7 +89,7 @@ public class Neo4jfsDirectoryStream implements DirectoryStream<Path>, AutoClosea
      */
     private void queryForChildren() {
         if (!exhausted) {
-            this.children = service.findChildren(uri, d.getId(), skippedCount, paginationMaxPerCall);
+            this.children = service.findChildren(uri, d, skippedCount, paginationMaxPerCall);
             this.exhausted = this.children == null || this.children.size() < paginationMaxPerCall;
             skippedCount += paginationMaxPerCall;
         }
