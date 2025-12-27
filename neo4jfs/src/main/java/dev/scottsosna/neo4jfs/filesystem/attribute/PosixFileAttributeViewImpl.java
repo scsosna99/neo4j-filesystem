@@ -3,7 +3,10 @@ package dev.scottsosna.neo4jfs.filesystem.attribute;
 import dev.scottsosna.neo4jfs.database.node.BaseEntry;
 
 import java.io.IOException;
-import java.nio.file.attribute.*;
+import java.nio.file.attribute.GroupPrincipal;
+import java.nio.file.attribute.PosixFileAttributeView;
+import java.nio.file.attribute.PosixFileAttributes;
+import java.nio.file.attribute.PosixFilePermission;
 import java.util.Set;
 
 /**

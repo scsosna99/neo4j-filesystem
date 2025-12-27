@@ -1,6 +1,5 @@
 package dev.scottsosna.neo4jfs.demo;
 
-import dev.scottsosna.neo4jfs.service.DirectoryService;
 import org.springframework.stereotype.Service;
 
 import java.net.URI;

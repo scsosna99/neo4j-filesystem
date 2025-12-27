@@ -2,7 +2,6 @@ package dev.scottsosna.neo4jfs.filesystem.attribute;
 
 import dev.scottsosna.neo4jfs.database.node.BaseEntry;
 import dev.scottsosna.neo4jfs.database.repository.DirectoryEntryRepository;
-import dev.scottsosna.neo4jfs.database.repository.DirectoryEntryRepositoryImpl;
 import dev.scottsosna.neo4jfs.util.SpringContext;
 
 import java.io.IOException;

@@ -1,7 +1,6 @@
 package dev.scottsosna.neo4jfs.web.controller;
 
 import dev.scottsosna.neo4jfs.service.DirectoryService;
-import dev.scottsosna.neo4jfs.service.FileSystemService;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
