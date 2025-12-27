@@ -19,7 +19,7 @@ public interface FileSystemService {
      * Deletes the complete file system, including content managed by Storage Manager.
      * @param fsUri Neo4Jfs URI for the file system to delete.
      */
-    void drop(final URI fsUri);
+    void drop(final URI fsUri) throws IOException;
 
     /**
      * The file system's {@code FileStore} instance is based on Storage Manager's partition

@@ -145,7 +145,7 @@ public class FileServiceImpl extends BaseNeo4jfsService implements FileService {
             targetDirectory = (DirectoryEntry) last;
         }
 
-        //  Do the actual work.
+        //  Do the actual work, including checking access.
         copy (sourceFile, targetUri, targetDirectory, options);
     }
 
@@ -161,6 +161,9 @@ public class FileServiceImpl extends BaseNeo4jfsService implements FileService {
                      final URI targetUri,
                      final DirectoryEntry targetDirectory,
                      final CopyOption... options) throws IOException {
+
+        //  Must have both read/write for target directory.
+        checkAccess(targetDirectory, AccessMode.READ, AccessMode.WRITE);
 
         //  Is there already a file or subdir with the same name?
         String fileName = Path.of(targetUri).getFileName().toString();
@@ -194,7 +197,7 @@ public class FileServiceImpl extends BaseNeo4jfsService implements FileService {
      */
     public void delete(final URI uri) throws IOException {
         FileEntry fe = prologueExistingFile(uri, false);
-        deleteWork(uri, fe);
+        deleteWork(uri, fe);    //  checks WRITE access
     }
 
     /**
@@ -219,6 +222,7 @@ public class FileServiceImpl extends BaseNeo4jfsService implements FileService {
     public InputStream getInputStream(final URI uri) throws IOException {
         checkUri(uri);
         FileEntry fe = prologueExistingFile(uri, false);
+        checkAccess(fe, AccessMode.READ);
         repository.updateLastAccessed(uri, fe, FileEntry.class);
         return storageManager.getFileInputStream(uri, fe.getStorageId());
     }
@@ -231,6 +235,7 @@ public class FileServiceImpl extends BaseNeo4jfsService implements FileService {
      */
     public OutputStream getOutputStream(final URI uri) throws IOException {
         FileEntry fe = prologueExistingFile(uri, true);
+        checkAccess(fe, AccessMode.WRITE);
         OutputStream os = storageManager.getFileOutputStream(uri, fe.getStorageId());
 
         //  Register callback to update file size once stream is closed.
@@ -279,15 +284,19 @@ public class FileServiceImpl extends BaseNeo4jfsService implements FileService {
             throw new NoSuchFileException("%s: no such file or directory".formatted(uri.resolve(".")));
         }
 
+        //  Confirm user has permissions to create file in parent directory.
+        DirectoryEntry parentDirectory = (DirectoryEntry) parent;
+        checkAccess(parentDirectory, AccessMode.WRITE);
+
         //  Is there already a file or subdir with the same name?
         String fileName = Path.of(uri).getFileName().toString();
-        verifyNameUniqueness(uri, (DirectoryEntry) parent, fileName, false);
+        verifyNameUniqueness(uri, parentDirectory, fileName, false);
 
         //  When InputStream provided, we have data to persist; without create an empty file
         StorageFileInfo info = (is != null) ? storageManager.createFile(uri, is) : storageManager.createFile(uri);
 
         //  Create/persist new file entry.
-        FileEntry f = new FileBuilder((DirectoryEntry) parent)
+        FileEntry f = new FileBuilder(parentDirectory)
             .setName(fileName)
             .setStorageId(info.getStorageId())
             .setSize(info.getSize())
@@ -295,7 +304,7 @@ public class FileServiceImpl extends BaseNeo4jfsService implements FileService {
         repository.create(uri, f);
 
         //  Add to the parent directory.
-        directoryService.addFile(uri, (DirectoryEntry) parent, f);
+        directoryService.addFile(uri, parentDirectory, f);
 
         return f;
     }
@@ -307,6 +316,9 @@ public class FileServiceImpl extends BaseNeo4jfsService implements FileService {
      * @throws IOException for whatever reason, the file could not be deleted
      */
     private void deleteWork(final URI uri, final FileEntry file) throws IOException {
+
+        //  Confirm user has permissions to delete the file.
+        checkAccess(file, AccessMode.WRITE);
 
         //  Delete the node first and then the file.
         if (!repository.delete(uri, file.getId())) {
@@ -337,12 +349,15 @@ public class FileServiceImpl extends BaseNeo4jfsService implements FileService {
         BaseEntry entry = null;
         if (parts.isEmpty()) {
             if (createIfNotFound) {
+                //  NOTE: createWork checks for write access on parent directory.
                 entry = createWork(uri, null);
             } else {
                 throw new NoSuchFileException("%s: no such file or directory".formatted(uri));
             }
         } else {
+            //  Requires at least READ access, caller checks for WRITE if necessary.
             entry = parts.getLast();
+            checkAccess(entry, AccessMode.READ);
         }
 
         if (entry instanceof FileEntry f) {
@@ -381,6 +396,7 @@ public class FileServiceImpl extends BaseNeo4jfsService implements FileService {
 
         // File must already exist for read-only access.
         FileEntry f = prologueExistingFile(uri, false);
+        checkAccess(f, AccessMode.READ);
 
         //  Storage Manager creates the channel
         SeekableByteChannel channel = storageManager.getSeekableByteChannel(uri, f.getStorageId(), READ_ONLY_OPTIONS);
@@ -416,11 +432,13 @@ public class FileServiceImpl extends BaseNeo4jfsService implements FileService {
                 throw new FileAlreadyExistsException(uri.toString());
             } catch (IOException ioe) {
                 //  Success, file doesn't already exist so create new, empty one.
+                //  NOTE: createWork checks for write access on parent directory.
                 f = createWork(uri, null);
             }
         } else {
             //  File may exist or could be created, based on the flag.
             f = prologueExistingFile(uri, flags.create);
+            checkAccess(f, AccessMode.WRITE);
         }
 
         //  Callback on close always required for writeable files, either to delete the file on close or to update size.
@@ -474,6 +492,9 @@ public class FileServiceImpl extends BaseNeo4jfsService implements FileService {
                                       final DirectoryEntry directory,
                                       final String fileName,
                                       final boolean replace) throws IOException {
+        //  Must have READ access to parent directory to check name uniqueness
+        checkAccess(directory, AccessMode.READ);
+
         //  Is there already a file or subdir with the same name?
         BaseEntry child = repository.findNamedChild(uri, directory.getId(), fileName);
         if (child != null) {
@@ -488,10 +509,10 @@ public class FileServiceImpl extends BaseNeo4jfsService implements FileService {
                     default:
                         throw new Neo4jfsUnknownEntryException(child.getClass().getSimpleName());
                 }
-        } else {
-            throw new FileAlreadyExistsException(uri.toString());
-        }
+            } else {
+                throw new FileAlreadyExistsException(uri.toString());
             }
+        }
     }
 
     @PostConstruct

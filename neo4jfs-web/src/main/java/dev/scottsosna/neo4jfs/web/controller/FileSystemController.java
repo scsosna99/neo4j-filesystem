@@ -5,7 +5,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
-import java.net.URI;
 
 /**
  * API endpoints for managing Neo4J file system.
@@ -42,7 +41,7 @@ public class FileSystemController extends Neo4jfsController {
      */
     @DeleteMapping
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void drop(@PathVariable("partitionId") final String partitionId) {
+    public void drop(@PathVariable("partitionId") final String partitionId) throws IOException {
         service.drop(uri(partitionId));
     }
 }

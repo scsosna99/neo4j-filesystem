@@ -9,12 +9,13 @@ import dev.scottsosna.neo4jfs.database.repository.util.DumpTreeVisitor;
 import dev.scottsosna.neo4jfs.database.repository.util.Neo4jfsTreeWalker;
 import dev.scottsosna.neo4jfs.exception.Neo4jfsIdenticalSourceTargetException;
 import dev.scottsosna.neo4jfs.exception.Neo4jfsUnknownEntryException;
-import dev.scottsosna.neo4jfs.filesystem.option.Neo4jfsCopyOption;
-import dev.scottsosna.neo4jfs.filesystem.option.Neo4jfsDeleteOption;
+import dev.scottsosna.neo4jfs.filesystem.Neo4jfsPath;
 import dev.scottsosna.neo4jfs.filesystem.attribute.BasicFileAttributeViewImpl;
 import dev.scottsosna.neo4jfs.filesystem.attribute.BasicFileAttributesImpl;
 import dev.scottsosna.neo4jfs.filesystem.attribute.FileOwnerAttributeViewImpl;
 import dev.scottsosna.neo4jfs.filesystem.attribute.PosixFileAttributeViewImpl;
+import dev.scottsosna.neo4jfs.filesystem.option.Neo4jfsCopyOption;
+import dev.scottsosna.neo4jfs.filesystem.option.Neo4jfsDeleteOption;
 import dev.scottsosna.neo4jfs.service.util.CopyMoveConsumer;
 import dev.scottsosna.neo4jfs.service.util.FileStream;
 import org.slf4j.Logger;
@@ -45,6 +46,9 @@ public class DirectoryServiceImpl extends BaseNeo4jfsService implements Director
     private FileService fileService;
     private final Map<String, FileVisitor> visitorMap = new HashMap<>();
 
+    /**
+     * Logger for this class
+     */
     private final static Logger logger = LoggerFactory.getLogger(DirectoryServiceImpl.class);
 
     /**
@@ -56,11 +60,40 @@ public class DirectoryServiceImpl extends BaseNeo4jfsService implements Director
     }
 
     /**
+     * Checks the existence, and optionally the accessibility, of a file or directory.
+     * @param path the path to the file/directory to check
+     * @param modes the access modes to check; may have zero elements.
+     * @throws IOException if access or I/O error occurs
+     */
+    public void checkAccess(final Path path, final AccessMode... modes) throws IOException {
+        checkUri(path.toUri());
+
+        //  Since URI was checked/validated, path should almost certainly be a Neo4jfsPath.
+        if (path instanceof Neo4jfsPath np) {
+            //  Retrieve the nodes (entries) of the provided path.
+            List<BaseEntry> entries = find(np.toUri());
+
+            //  Null or empty set indicates path does not exist.
+            if (entries == null || entries.isEmpty()) {
+                throw new NoSuchFileException(path.toString());
+            }
+
+            //  Have entry, NOW we can actually check access.
+            checkAccess(entries.getLast(), modes);
+        } else {
+            //  Should never happen, but just in case.
+            throw new IllegalArgumentException("Path is not a Neo4jfsPath: %s".formatted(path));
+        }
+    }
+
+    /**
      * Each file system needs a root '/' directory that is (somewhat) immutable
      * @param fsUri Neo4Jfs URI for the file system (partition)
      * @return the newly-created root directory
+     * @throws IOException if I/O error occurs or non-admin attempting
      */
-    public DirectoryEntry createRoot (final URI fsUri) {
+    public DirectoryEntry createRoot (final URI fsUri) throws IOException {
+        checkAccessAdmin();
         checkUri(fsUri);
         return repository.createRoot(fsUri);
     }
@@ -69,8 +102,9 @@ public class DirectoryServiceImpl extends BaseNeo4jfsService implements Director
      * Create file system root '/' directory if one doesn't already exist
      * @param fsUri Neo4Jfs URI for the file system (partition)
      * @return the root directory
+     * @throws IOException if access or I/O error occurs
      */
-    public DirectoryEntry findOrCreateRoot(final URI fsUri) {
+    public DirectoryEntry findOrCreateRoot(final URI fsUri) throws IOException {
         checkUri(fsUri);
         DirectoryEntry d = repository.findRoot(fsUri);
         if (d == null) {
@@ -99,6 +133,9 @@ public class DirectoryServiceImpl extends BaseNeo4jfsService implements Director
 
         //  Ensure that immediate parent entry of the new directory is a directory.
         if (entries.getLast() instanceof DirectoryEntry dir) {
+            //  Confirm write access to parent directory.
+            checkAccess(dir, AccessMode.READ, AccessMode.WRITE);
+
             //  Make sure the name requested doesn't already exist
             BaseEntry child = repository.findNamedChild(uri, dir.getId(), path.getFileName().toString());
             if (child != null) {
@@ -124,23 +161,33 @@ public class DirectoryServiceImpl extends BaseNeo4jfsService implements Director
      */
     public List<BaseEntry> find(final URI uri) {
         checkUri(uri);
-        return repository.find(uri, Path.of(uri));
+        List<BaseEntry> entries = repository.find(uri, Path.of(uri));
+        if (entries != null && !entries.isEmpty() && checkAccessNoThrows(entries.getLast(), AccessMode.READ) == null) {
+            return entries;
+        } else {
+            return List.of();
+        }
     }
 
     /**
      * Return a directory with a paginated list of children (files, subdirectories)
      * @param fsUri Neo4Jfs base URI
-     * @param dir specific directory for which children are returned
+     * @param parent specific directory for which children are returned
      * @param skip pagination: how many children skipped
      * @param limit pagination: how many children returned
      * @return list of BaseEntry for the children or an empty list.
      */
     public List<BaseEntry> findChildren(final URI fsUri,
-                                        final DirectoryEntry dir,
+                                        final DirectoryEntry parent,
                                         final int skip,
                                         final int limit) {
         checkUri(fsUri);
-        return repository.getChildren(fsUri, dir, skip, limit);
+
+        //  Retrieve children from Neo4J but only return those which user has READ access.
+        return repository.getChildren(fsUri, parent, skip, limit)
+            .stream()
+            .filter(e -> checkAccessNoThrows(e, AccessMode.READ) != null)
+            .toList();
     }
 
     /**
@@ -156,7 +203,12 @@ public class DirectoryServiceImpl extends BaseNeo4jfsService implements Director
                                             final int skip,
                                             final int limit) {
         checkUri(fsUri);
-        return repository.getSubdirs(fsUri, parent, skip, limit);
+
+        //  Retrieve subdirectories from Neo4J but only return those which user has READ access.
+        return repository.getSubdirs(fsUri, parent, skip, limit)
+            .stream()
+            .filter(e -> checkAccessNoThrows(e, AccessMode.READ) != null)
+            .toList();
     }
 
     /**
@@ -189,10 +241,13 @@ public class DirectoryServiceImpl extends BaseNeo4jfsService implements Director
      * Return the parent directory of the specified URI
      * @param uri fully-qualified Neo4Jfs URI specifying directory/file to find parent of
      * @return pagent directory
+     * @throws IOException thrown when user doesn't have access
      */
-    public BaseEntry parent(final URI uri) {
+    public BaseEntry parent(final URI uri) throws IOException {
         checkUri(uri);
-        return repository.parent(uri);
+        BaseEntry parent = repository.parent(uri);
+        checkAccess(parent, AccessMode.READ);
+        return parent;
     }
 
     /**
@@ -250,7 +305,7 @@ public class DirectoryServiceImpl extends BaseNeo4jfsService implements Director
     }
 
     /**
-     * Return a directory with a paginated list of subdirectories
+`     * Return a directory with a paginated list of subdirectories
      * @param fsUri Neo4Jfs base URI
      * @param parent directory for which filess are returned
      * @param skip pagination: how many subdirs skipped
@@ -312,7 +367,10 @@ public class DirectoryServiceImpl extends BaseNeo4jfsService implements Director
                              final Object value,
                              final LinkOption... options) throws IOException {
         checkUri(uri);
+
+        //  Get entry and check user's access to ensure user permitted to update/set attributes.
         BaseEntry entry = find(uri).getLast();
+        checkAccess(entry, AccessMode.WRITE);
 
         switch (viewName) {
             case ATTRIBUTE_VIEW_NAME_BASIC:
@@ -594,6 +652,9 @@ public class DirectoryServiceImpl extends BaseNeo4jfsService implements Director
         //  By this point, must be a directory to proceed.
         if (shouldBeDirectory instanceof DirectoryEntry d) {
 
+            //  Check access permissions, READ access for checking files or subdirectories in to-be-deleted directory.
+            checkAccess(d, AccessMode.READ, AccessMode.WRITE);
+
             //  Root directory cannot be deleted.
             if (d.isRoot()) {
                 throw new AccessDeniedException("%s: Root directory cannot be deleted".formatted(uri));
@@ -616,7 +677,7 @@ public class DirectoryServiceImpl extends BaseNeo4jfsService implements Director
      * @param entryToUpdate entry to update
      * @param attribute attribute name to modify
      * @param value new attribute value
-     * @throws IOException
+     * @throws IOException if an I/O error occurs, such as invalid attribute value.
      */
     private void setAttributeBasic(final BaseEntry entryToUpdate,
                                    final String attribute,
@@ -661,7 +722,7 @@ public class DirectoryServiceImpl extends BaseNeo4jfsService implements Director
                               final FileVisitor<Neo4jfsTreeWalker.NeofjfsWalkerEvent> visitor) throws IOException {
 
         var attribs = new BasicFileAttributesImpl(null);
-        try (var walker = new Neo4jfsTreeWalker(repository)) {
+        try (var walker = new Neo4jfsTreeWalker()) {
             var env = walker.walk(uri);
             do {
                 switch (env.eventType()) {

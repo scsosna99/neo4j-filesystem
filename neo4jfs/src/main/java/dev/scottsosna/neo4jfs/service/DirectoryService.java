@@ -7,9 +7,7 @@ import dev.scottsosna.neo4jfs.filesystem.option.Neo4jfsDeleteOption;
 
 import java.io.IOException;
 import java.net.URI;
-import java.nio.file.CopyOption;
-import java.nio.file.FileVisitor;
-import java.nio.file.LinkOption;
+import java.nio.file.*;
 import java.nio.file.attribute.FileAttributeView;
 import java.util.List;
 
@@ -19,18 +17,27 @@ import java.util.List;
 public interface DirectoryService {
 
     /**
+     * Checks the existence, and optionally the accessibility, of a file or directory.
+     * @param path the path to the file/directory to check
+     * @param modes the access modes to check; may have zero elements.
+     * @throws IOException if access or I/O error occurs
+     */
+    void checkAccess(final Path path, final AccessMode... modes) throws IOException;
+
+    /**
      * Each file system needs a root '/' directory that is (somewhat) immutable
      * @param fsUri Neo4Jfs URI for the file system (partition)
      * @return the newly-created root directory
      */
-    DirectoryEntry createRoot (final URI fsUri);
+    DirectoryEntry createRoot (final URI fsUri) throws IOException;
 
     /**
      * Create file system root '/' directory if one doesn't already exist
      * @param fsUri Neo4Jfs URI for the file system (partition)
      * @return the root directory
+     * @throws IOException if access or I/O error occurs
      */
-    DirectoryEntry findOrCreateRoot(final URI fsUri);
+    DirectoryEntry findOrCreateRoot(final URI fsUri) throws IOException;
 
     /**
      * Create new Neo4Jfs directory
@@ -89,8 +96,9 @@ public interface DirectoryService {
      * Return the parent directory of the specified URI
      * @param uri fully-qualified Neo4Jfs URI specifying directory/file to find parent of
      * @return pagent directory
+     * @throws IOException thrown when user doesn't have access
      */
-    BaseEntry parent(final URI uri);
+    BaseEntry parent(final URI uri) throws IOException;
 
     /**
      * Delete node specified by URI, file or directory

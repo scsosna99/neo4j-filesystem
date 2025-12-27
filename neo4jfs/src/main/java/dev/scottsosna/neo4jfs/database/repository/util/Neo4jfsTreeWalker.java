@@ -4,9 +4,9 @@ import dev.scottsosna.neo4jfs.config.Neo4jfsConstants;
 import dev.scottsosna.neo4jfs.database.node.BaseEntry;
 import dev.scottsosna.neo4jfs.database.node.DirectoryEntry;
 import dev.scottsosna.neo4jfs.database.node.FileEntry;
-import dev.scottsosna.neo4jfs.database.repository.DirectoryEntryRepository;
 import dev.scottsosna.neo4jfs.exception.Neo4jfsException;
 import dev.scottsosna.neo4jfs.exception.Neo4jfsUnknownEntryException;
+import dev.scottsosna.neo4jfs.service.DirectoryService;
 import dev.scottsosna.neo4jfs.util.SpringContext;
 
 import java.io.Closeable;
@@ -37,10 +37,7 @@ public class Neo4jfsTreeWalker implements Closeable {
      */
     private final int maxDepth;
 
-    /**
-     * directory database repository
-     */
-    private final DirectoryEntryRepository repository;
+    private final DirectoryService service;
 
     /**
      * Directories added to stack when entering subdirectory; removed when leaving subdirectory.  Basically
@@ -119,15 +116,14 @@ public class Neo4jfsTreeWalker implements Closeable {
 
         this.closed = false;
         this.maxDepth = maxDepth;
-        this.repository = SpringContext.getBean(DirectoryEntryRepository.class);
+        this.service = SpringContext.getBean(DirectoryService.class);
         this.paginationMaxPerCall = SpringContext.getPropertyInteger(NEO4JFS_PROPERTY_PAGINATION_SIZE);
     }
 
     /**
      * Constructor.
-     * @param repository used to query Neo4J for nodes to walk
      */
-    public Neo4jfsTreeWalker(final DirectoryEntryRepository repository) {
+    public Neo4jfsTreeWalker() {
         this(Integer.MAX_VALUE);
     }
 
@@ -150,13 +146,13 @@ public class Neo4jfsTreeWalker implements Closeable {
 
         //  Walking may start anywhere in tree - root, directory, file, link, etc. - so find starting node and
         //  create appropriate event based on its type (today either directory or file).
-        //  TODO: Change to switch-on-class when feature leaves preview.
         BaseEntry startingNode = getStartingEntry(uri);
         switch (startingNode) {
             case DirectoryEntry d:
                 //  The node returned by getStartingEntry() does not return directories files or subdirectories, so
                 //  retrieve them separately.  The results are paginated to prevent problems with large file systems.
-                DirectoryEntry withChildren = null; // repository.getChildren(uri, d.getId(), 0, paginationMaxPerCall);
+                //  TODO: Need to fix findChildren call
+                DirectoryEntry withChildren = null; //service.findChildren(uri, d, 0, paginationMaxPerCall);
                 if (withChildren == null) {
                     //  Current directory has no subdirs or files so substitute the starting node so walk can continue.
                     withChildren = d;
@@ -207,7 +203,7 @@ public class Neo4jfsTreeWalker implements Closeable {
 
         //  Query returns nodes for all parts of the pathname defined in the URI with an empty list returned
         //  when any ancestor does not exist.
-        List<BaseEntry> nodes = repository.find(uri);
+        List<BaseEntry> nodes = service.find(uri);
         if (nodes.isEmpty()) {
             throw new NoSuchFileException(uri.toString());
         }

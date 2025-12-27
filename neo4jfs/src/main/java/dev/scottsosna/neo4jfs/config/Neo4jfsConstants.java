@@ -23,6 +23,16 @@ public class Neo4jfsConstants {
     public static final String NAME_ADMIN_USER = "root";
 
     /**
+     * An unknown or unauthenticated group.
+     */
+    public static final String NAME_UNAUTHENTICATED_GROUP = "nobody";
+
+    /**
+     * An unknown or unauthenticated user.
+     */
+    public static final String NAME_UNAUTHENTICATED_USER = "nobody";
+
+    /**
      * What character separates path elements in Neo4Jfs.
      */
     public static final String PATH_SEPARATOR = "/";
@@ -92,4 +102,13 @@ public class Neo4jfsConstants {
         BASIC_ATTRIBUTE_IS_SYMBOLIC_LINK,
         BASIC_ATTRIBUTE_SIZE
     );
+
+    /**
+     * Using Posix permission strings to represent Neo4Jfs permissions.
+     */
+    public static final char NEO4JFS_PERMISSION_READ = 'r';
+    public static final char NEO4JFS_PERMISSION_WRITE = 'w';
+    public static final char NEO4JFS_PERMISSION_EXECUTE = 'x';
+    public static final char NEO4JFS_PERMISSION_NONE = '-';
+    public static final String NEO4JFS_PERMISSION_NONE_GROUP = "---";
 }

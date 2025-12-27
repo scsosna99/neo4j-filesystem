@@ -1,8 +1,6 @@
 package dev.scottsosna.neo4jfs.filesystem;
 
 import dev.scottsosna.neo4jfs.config.Neo4jfsConstants;
-import dev.scottsosna.neo4jfs.database.node.BaseEntry;
-import dev.scottsosna.neo4jfs.filesystem.attribute.BasicFileAttributesImpl;
 import dev.scottsosna.neo4jfs.service.DirectoryService;
 import dev.scottsosna.neo4jfs.service.FileService;
 import dev.scottsosna.neo4jfs.service.FileSystemService;
@@ -59,6 +57,8 @@ public class Neo4jFileSystemProvider extends FileSystemProvider {
      * Constructor
      */
     public Neo4jFileSystemProvider() {
+        super();
+
         //  File system providers are instantiated by the JDK and not by Spring, yet we need the Spring beans to
         //  do the work.  The {@code SpringContext) utility retrieves the beans from the Spring context.
         fileSystemService = SpringContext.getBean(FileSystemService.class);
@@ -294,7 +294,8 @@ public class Neo4jFileSystemProvider extends FileSystemProvider {
      */
     @Override
     public void checkAccess(final Path path, final AccessMode... modes) throws IOException {
-        // TODO: implement checks once security design is in place.
+        //  Delegate to DirectoryService which does yeoman's work of checking access.
+        directoryService.checkAccess(path, modes);
     }
 
     /**
