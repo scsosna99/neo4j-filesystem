@@ -23,7 +23,7 @@ import java.util.UUID;
  * Dummy storage manager that emulates files stored externally without actually doing so.  Intended for development
  * when working on file tree functionality and actual files are unnecessary or bothersome.
  */
-@Service("dummy")
+@Service
 @ConditionalOnProperty(prefix = "neo4jfs", name = "storage", havingValue = "dummy")
 public class DummyStorageManager implements StorageManager {
 

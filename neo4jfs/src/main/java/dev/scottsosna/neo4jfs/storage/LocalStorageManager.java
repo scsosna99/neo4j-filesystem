@@ -28,7 +28,7 @@ import java.util.UUID;
  * protection from cross-instance/cross-partition file access/modifications.  The internal file names are random UUIDs.
  * For scaling/performance, files are stored in subdirectories based on the first two characters of the UUID.
  */
-@Service("local")
+@Service
 @ConditionalOnProperty(prefix = "neo4jfs", name = "storage", havingValue = "local")
 public class LocalStorageManager implements StorageManager {
 
