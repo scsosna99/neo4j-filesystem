@@ -123,7 +123,7 @@ public class Neo4jFileSystem extends FileSystem {
 
     @Override
     public Set<String> supportedFileAttributeViews() {
-        return Set.of();
+        return Neo4jfsConstants.SUPPORTED_ATTRIBUTE_VIEW_NAMES;
     }
 
     /**

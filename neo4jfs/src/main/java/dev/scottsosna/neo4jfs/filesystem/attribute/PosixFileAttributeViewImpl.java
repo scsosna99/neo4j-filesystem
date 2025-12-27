@@ -14,6 +14,8 @@ import java.util.Set;
  */
 public class PosixFileAttributeViewImpl extends FileOwnerAttributeViewImpl implements PosixFileAttributeView {
 
+    public static final String VIEW_NAME = "posix";
+
     /**
      * Constructor
      * @param entry file/directory providing the attributes.
@@ -28,7 +30,7 @@ public class PosixFileAttributeViewImpl extends FileOwnerAttributeViewImpl imple
      */
     @Override
     public String name() {
-        return "posix";
+        return VIEW_NAME;
     }
 
     /**

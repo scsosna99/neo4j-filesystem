@@ -1,6 +1,7 @@
 package dev.scottsosna.neo4jfs.storage.util;
 
 import dev.scottsosna.neo4jfs.filesystem.Neo4jfsFileStore;
+import dev.scottsosna.neo4jfs.filesystem.attribute.BasicFileAttributeViewImpl;
 
 import java.io.IOException;
 import java.nio.file.FileStore;
@@ -9,8 +10,6 @@ import java.nio.file.Path;
 import java.nio.file.attribute.FileAttributeView;
 import java.nio.file.attribute.FileStoreAttributeView;
 import java.util.Objects;
-
-import static dev.scottsosna.neo4jfs.config.Neo4jfsConstants.ATTRIBUTE_VIEW_NAME_BASIC;
 
 /**
  * Java NIO {@code FileStore} implementation for local storage manager.
@@ -87,8 +86,7 @@ public class LocalStorageFileStore extends Neo4jfsFileStore {
      */
     @Override
     public boolean supportsFileAttributeView(String name) {
-        Objects.requireNonNull(name);
-        return ATTRIBUTE_VIEW_NAME_BASIC.equals(name);
+        return BasicFileAttributeViewImpl.VIEW_NAME.equals(name);
     }
 
     @Override

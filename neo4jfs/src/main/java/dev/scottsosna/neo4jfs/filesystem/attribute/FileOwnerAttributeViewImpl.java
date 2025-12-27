@@ -11,6 +11,8 @@ import java.nio.file.attribute.UserPrincipal;
  */
 public class FileOwnerAttributeViewImpl extends BasicFileAttributeViewImpl implements FileOwnerAttributeView {
 
+    public static final String VIEW_NAME = "owner";
+
     /**
      * Constructor
      * @param entry file/directory providing the attributes.
@@ -25,7 +27,7 @@ public class FileOwnerAttributeViewImpl extends BasicFileAttributeViewImpl imple
      */
     @Override
     public String name() {
-        return "owner";
+        return VIEW_NAME;
     }
 
     /**

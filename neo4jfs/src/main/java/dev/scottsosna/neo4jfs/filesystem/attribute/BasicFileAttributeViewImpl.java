@@ -13,6 +13,8 @@ import java.nio.file.attribute.FileTime;
  */
 public class BasicFileAttributeViewImpl implements java.nio.file.attribute.BasicFileAttributeView {
 
+    public static final String VIEW_NAME = "basic";
+
     /**
      * Underlying entry for file or directoryproviding the attributes.
      */
@@ -40,7 +42,7 @@ public class BasicFileAttributeViewImpl implements java.nio.file.attribute.Basic
      */
     @Override
     public String name() {
-        return "basic";
+        return VIEW_NAME;
     }
 
     /**

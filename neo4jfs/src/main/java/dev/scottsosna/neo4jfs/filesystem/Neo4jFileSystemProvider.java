@@ -1,6 +1,7 @@
 package dev.scottsosna.neo4jfs.filesystem;
 
 import dev.scottsosna.neo4jfs.config.Neo4jfsConstants;
+import dev.scottsosna.neo4jfs.filesystem.attribute.BasicFileAttributeViewImpl;
 import dev.scottsosna.neo4jfs.service.DirectoryService;
 import dev.scottsosna.neo4jfs.service.FileService;
 import dev.scottsosna.neo4jfs.service.FileSystemService;
@@ -490,7 +491,7 @@ public class Neo4jFileSystemProvider extends FileSystemProvider {
         int colonIndex = attributes.indexOf(':');
         if (colonIndex > 0) {
             String viewName = attributes.substring(0, colonIndex);
-            if (SUPPORTED_ATTRIBUTE_VIEW_NAME.contains(viewName)) {
+            if (SUPPORTED_ATTRIBUTE_VIEW_NAMES.contains(viewName)) {
                 return viewName;
             }
 
@@ -513,7 +514,7 @@ public class Neo4jFileSystemProvider extends FileSystemProvider {
                                                  final List<String> attributes,
                                                  final BasicFileAttributes file) {
         switch (viewName) {
-            case ATTRIBUTE_VIEW_NAME_BASIC:
+            case BasicFileAttributeViewImpl.VIEW_NAME:
                 return buildAttributeMapBasic(attributes, file);
             default:
                 //  Should never get here ....
@@ -592,7 +593,7 @@ public class Neo4jFileSystemProvider extends FileSystemProvider {
         List<String> split = Arrays.asList(noViewAttributes.split(ATTRIBUTE_SEPARATOR));
 
         switch (viewName) {
-            case ATTRIBUTE_VIEW_NAME_BASIC:
+            case BasicFileAttributeViewImpl.VIEW_NAME:
                 return validateAttribsBasic(split);
             default:
                 //  view name _should_ have been validated earlier, therefore don't expect to get here.

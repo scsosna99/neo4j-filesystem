@@ -1,6 +1,11 @@
 package dev.scottsosna.neo4jfs.config;
 
+import dev.scottsosna.neo4jfs.filesystem.attribute.BasicFileAttributeViewImpl;
+import dev.scottsosna.neo4jfs.filesystem.attribute.FileOwnerAttributeViewImpl;
+import dev.scottsosna.neo4jfs.filesystem.attribute.PosixFileAttributeViewImpl;
+
 import java.util.List;
+import java.util.Set;
 
 /**
  * Neo4jfs constants stored in a centralized, standard location.
@@ -65,19 +70,18 @@ public class Neo4jfsConstants {
     public static final String ATTRIBUTE_WILDCARD_ALL = "*";
 
     /**
-     * Supported attribute view names
-     */
-    public static final String ATTRIBUTE_VIEW_NAME_BASIC = "basic";
-
-    /**
      * The valid view names when attribute list specifies a view name for the attributes.
      */
-    public static final List<String> SUPPORTED_ATTRIBUTE_VIEW_NAME = List.of(ATTRIBUTE_VIEW_NAME_BASIC);
+    public static final Set<String> SUPPORTED_ATTRIBUTE_VIEW_NAMES = Set.of(
+        BasicFileAttributeViewImpl.VIEW_NAME,
+        FileOwnerAttributeViewImpl.VIEW_NAME,
+        PosixFileAttributeViewImpl.VIEW_NAME
+    );
 
     /**
      * What to default to when view name is not specified.
      */
-    public static final String DEFAULT_ATTRIBUTE_VIEW_NAME = "basic";
+    public static final String DEFAULT_ATTRIBUTE_VIEW_NAME = BasicFileAttributeViewImpl.VIEW_NAME;
 
     /**
      * The string equivalents for attributes exposed by {@code BasicFileAttributes}

@@ -373,7 +373,7 @@ public class DirectoryServiceImpl extends BaseNeo4jfsService implements Director
         checkAccess(entry, AccessMode.WRITE);
 
         switch (viewName) {
-            case ATTRIBUTE_VIEW_NAME_BASIC:
+            case BasicFileAttributeViewImpl.VIEW_NAME:
                 setAttributeBasic(entry, attribute, value);
                 break;
             default:
