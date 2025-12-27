@@ -120,7 +120,7 @@ public class BaseNeo4jfsService {
         //  Attempt to get the authenticated user and confirm its the admin
         if (SecurityContextHolder.getContext().getAuthentication() != null) {
             Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-            if (Neo4jfsConstants.NAME_ADMIN_USER.equals(authentication.getName())) {
+            if (authentication != null && Neo4jfsConstants.NAME_ADMIN_USER.equals(authentication.getName())) {
                 return;
             }
         }
