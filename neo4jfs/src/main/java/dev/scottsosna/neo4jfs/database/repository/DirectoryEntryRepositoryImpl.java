@@ -68,16 +68,20 @@ public class DirectoryEntryRepositoryImpl extends BaseEntryRepositoryImpl implem
     /**
      * Create new root directory for database/filesystem
      * @param fsUri Neo4Jfs file system URI
+     * @param adminUser admin/super-user for {@code AccessManager} implementation
+     * @param adminGroup admin group for {@code AccessManager} implementation
      * @return {@link DirectoryEntry} for root directory.
      */
-    public DirectoryEntry createRoot(final URI fsUri) {
+    public DirectoryEntry createRoot(final URI fsUri,
+                                     final String adminUser,
+                                     final String adminGroup) {
 
         //  Create new root with a bunch of default values.
         DirectoryEntry d = new DirectoryBuilder()
             .name(ROOT_DIRECTORY_NAME)
-            .userName(Neo4jfsConstants.NAME_ADMIN_USER)
-            .groupName(Neo4jfsConstants.NAME_ADMIN_GROUP)
-            .permissions(config.defaultRootPermissions)
+            .userName(adminUser)
+            .groupName(adminGroup)
+            .permissions(config.rootPermissions)
             .root(true)
             .build();
 

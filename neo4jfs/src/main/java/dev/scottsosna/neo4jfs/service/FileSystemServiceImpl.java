@@ -6,6 +6,7 @@ import dev.scottsosna.neo4jfs.database.model.neo4j.DatabaseStatusType;
 import dev.scottsosna.neo4jfs.database.model.neo4j.DatabaseType;
 import dev.scottsosna.neo4jfs.database.repository.DatabaseRepository;
 import dev.scottsosna.neo4jfs.exception.Neo4jfsDatabaseException;
+import dev.scottsosna.neo4jfs.security.AccessManager;
 import dev.scottsosna.neo4jfs.storage.StorageManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -46,10 +47,13 @@ public class FileSystemServiceImpl extends BaseNeo4jfsService implements FileSys
      * @param repository Neo5J database repository
      * @param directoryService manages directories, subdirectories and files in file system.
      * @param storageManager persists physical files of the file system.
+     * @param accessManager checks access permissions for service
      */
     public FileSystemServiceImpl(final DatabaseRepository repository,
                                  final DirectoryService directoryService,
-                                 final StorageManager storageManager) {
+                                 final StorageManager storageManager,
+                                 final AccessManager accessManager) {
+        super(accessManager);
         this.repository = repository;
         this.directoryService = directoryService;
         this.storageManager = storageManager;

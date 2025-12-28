@@ -1,6 +1,6 @@
 package dev.scottsosna.neo4jfs.config;
 
-import dev.scottsosna.neo4jfs.database.repository.util.PosixFilePermissionConverter;
+import dev.scottsosna.neo4jfs.security.AccessManager;
 import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -16,6 +16,16 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 @EnableScheduling
 @Slf4j
 public class Neo4jfsConfiguration {
+
+    private final AccessManager accessManager;
+
+    /**
+     * Constructore
+     * @param accessManager configured access manager
+     */
+    public Neo4jfsConfiguration(final AccessManager accessManager) {
+        this.accessManager = accessManager;
+    }
 
     /**
      * URI of the Neo4J database instance.
@@ -45,19 +55,19 @@ public class Neo4jfsConfiguration {
     public Integer defaultPageSize;
 
     /**
-     * Default permissions applied when creating the root directory for a Neo4Jfs partition.  When unconfigured,
-     * it's read-write-execute for owner and read-only for group (640).
+     * Permissions applied when creating root directory for new Neo4Jfs file system, specific to the
+     * {@code AccessManager} implementation configured.
      */
-    @Value("${neo4jfs.defaultRootPermissions:rwxr-x---}")
-    public String defaultRootPermissions;
+    public String rootPermissions;
 
     /**
      * Ensure the default permissions configured to apply to a root directory are valid.  Don't start if not.
      */
     @PostConstruct
     public void init() {
-        if (!PosixFilePermissionConverter.validate(defaultRootPermissions)) {
-            throw new IllegalArgumentException("Invalid permissions for root directory: " + defaultRootPermissions);
+        rootPermissions = accessManager.rootPermissions();
+        if (!accessManager.validatePermissions(rootPermissions)) {
+            throw new IllegalArgumentException("Invalid permissions for root directory: " + rootPermissions);
         }
     }
 }

@@ -16,9 +16,11 @@ public interface DirectoryEntryRepository extends BaseEntryRepository {
      * Create new root directory for database/filesystem
      *
      * @param fsUri Neo4Jfs file system URI
+     * @param adminUser admin/super-user for {@code AccessManager} implementation
+     * @param adminGroup admin group for {@code AccessManager} implementation
      * @return {@link DirectoryEntry} for root directory.
      */
-    DirectoryEntry createRoot(final URI fsUri);
+    DirectoryEntry createRoot(final URI fsUri, final String adminUser, final String adminGroup);
 
     /**
      * Fetch the individual entries for a file or directory path which must exist.

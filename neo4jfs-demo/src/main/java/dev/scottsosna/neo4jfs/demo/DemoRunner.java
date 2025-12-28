@@ -1,6 +1,6 @@
 package dev.scottsosna.neo4jfs.demo;
 
-import dev.scottsosna.neo4jfs.config.Neo4jfsConstants;
+import dev.scottsosna.neo4jfs.security.AccessManager;
 import dev.scottsosna.neo4jfs.util.SpringContext;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
@@ -18,9 +18,10 @@ import java.util.List;
 @SpringBootApplication(scanBasePackages = {"dev.scottsosna.neo4jfs","dev.scottsosna.neo4jfs.demo"})
 public class DemoRunner implements CommandLineRunner {
 
-    public static void main(String[] args) {
-        if (args.length == 0) return;
-        SpringApplication.run(DemoRunner.class, args);
+    private final AccessManager accessManager;
+
+    public DemoRunner(final AccessManager accessManager) {
+        this.accessManager = accessManager;
     }
 
     @Override
@@ -30,9 +31,9 @@ public class DemoRunner implements CommandLineRunner {
         SecurityContext context = SecurityContextHolder.createEmptyContext();
         context.setAuthentication(
             new TestingAuthenticationToken(
-                Neo4jfsConstants.NAME_ADMIN_USER,
+                accessManager.getAdminUser(),
                 "demoRunner",
-                List.of(new SimpleGrantedAuthority(Neo4jfsConstants.NAME_ADMIN_GROUP)))
+                List.of(new SimpleGrantedAuthority(accessManager.getAdminGroup())))
         );
         SecurityContextHolder.setContext(context);
 
@@ -46,5 +47,10 @@ public class DemoRunner implements CommandLineRunner {
                 System.err.println("No demo found for " + beanName);
             }
         }
+    }
+
+    public static void main(String[] args) {
+        if (args.length == 0) return;
+        SpringApplication.run(DemoRunner.class, args);
     }
 }

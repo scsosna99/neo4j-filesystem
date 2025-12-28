@@ -16,6 +16,7 @@ import dev.scottsosna.neo4jfs.filesystem.attribute.FileOwnerAttributeViewImpl;
 import dev.scottsosna.neo4jfs.filesystem.attribute.PosixFileAttributeViewImpl;
 import dev.scottsosna.neo4jfs.filesystem.option.Neo4jfsCopyOption;
 import dev.scottsosna.neo4jfs.filesystem.option.Neo4jfsDeleteOption;
+import dev.scottsosna.neo4jfs.security.AccessManager;
 import dev.scottsosna.neo4jfs.service.util.CopyMoveConsumer;
 import dev.scottsosna.neo4jfs.service.util.FileStream;
 import org.slf4j.Logger;
@@ -54,8 +55,11 @@ public class DirectoryServiceImpl extends BaseNeo4jfsService implements Director
     /**
      * Constructor
      * @param repository database repository for managing Directory nodes in Neo4J.
+     * @param accessManager checks access permissions for service
      */
-    public DirectoryServiceImpl(DirectoryEntryRepository repository) {
+    public DirectoryServiceImpl(final DirectoryEntryRepository repository,
+                                final AccessManager accessManager) {
+        super(accessManager);
         this.repository = repository;
     }
 
@@ -95,7 +99,7 @@ public class DirectoryServiceImpl extends BaseNeo4jfsService implements Director
     public DirectoryEntry createRoot (final URI fsUri) throws IOException {
         checkAccessAdmin();
         checkUri(fsUri);
-        return repository.createRoot(fsUri);
+        return repository.createRoot(fsUri, accessManager.getAdminUser(), accessManager.getAdminGroup());
     }
 
     /**
@@ -108,7 +112,7 @@ public class DirectoryServiceImpl extends BaseNeo4jfsService implements Director
         checkUri(fsUri);
         DirectoryEntry d = repository.findRoot(fsUri);
         if (d == null) {
-            d = repository.createRoot(fsUri);
+            d = createRoot(fsUri);
         }
 
         return d;

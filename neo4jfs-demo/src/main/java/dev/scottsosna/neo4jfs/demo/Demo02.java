@@ -35,9 +35,10 @@ public class Demo02 implements Demo {
             Files.copy(connection.getInputStream(), fs.getPath("/text/github.html"));
 
             //  Copy Neo4Jfs file to local file
-            InputStream is = Files.newInputStream(fs.getPath("/text/github.html"));
-            OutputStream os = Files.newOutputStream(Path.of("./data/downloads/github.html"));
-            is.transferTo(os);
+            try (InputStream is = Files.newInputStream(fs.getPath("/text/github.html"));
+                OutputStream os = Files.newOutputStream(Path.of("./data/downloads/github.html"))) {
+                is.transferTo(os);
+            }
         } catch (Exception e) {
             e.printStackTrace();
         }

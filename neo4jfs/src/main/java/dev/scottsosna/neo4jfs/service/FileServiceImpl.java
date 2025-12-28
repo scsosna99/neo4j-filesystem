@@ -7,6 +7,7 @@ import dev.scottsosna.neo4jfs.database.node.FileBuilder;
 import dev.scottsosna.neo4jfs.database.node.FileEntry;
 import dev.scottsosna.neo4jfs.database.repository.FileEntryRepository;
 import dev.scottsosna.neo4jfs.exception.Neo4jfsUnknownEntryException;
+import dev.scottsosna.neo4jfs.security.AccessManager;
 import dev.scottsosna.neo4jfs.service.util.CallbackOutputStream;
 import dev.scottsosna.neo4jfs.service.util.CallbackSeekableByteChannel;
 import dev.scottsosna.neo4jfs.storage.StorageManager;
@@ -62,10 +63,13 @@ public class FileServiceImpl extends BaseNeo4jfsService implements FileService {
      * @param repository database component for files
      * @param directoryService service for directories containing files
      * @param storageManager physical storage of the files managed by Neo4Jfs
+     * @param accessManager checks access permissions for service
      */
     public FileServiceImpl(final FileEntryRepository repository,
                            final DirectoryService directoryService,
-                           final StorageManager storageManager) {
+                           final StorageManager storageManager,
+                           final AccessManager accessManager) {
+        super(accessManager);
         this.repository = repository;
         this.directoryService = directoryService;
         this.storageManager = storageManager;
