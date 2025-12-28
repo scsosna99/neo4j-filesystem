@@ -76,7 +76,7 @@ public class PosixFileAttributeViewImpl extends FileOwnerAttributeViewImpl imple
      */
     @Override
     public void setGroup(GroupPrincipal group) throws IOException {
-        entry.setGroupName( group.getName());
+        entry.setOwnerGroupName( group.getName());
         persist();
     }
 }

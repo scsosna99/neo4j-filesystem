@@ -38,8 +38,8 @@ public class DirectoryBuilder {
      */
     public DirectoryBuilder(final DirectoryEntry parent) {
         //  Certain values inherited from parent unless overridden.
-        this.userName = parent.userName;
-        this.groupName = parent.groupName;
+        this.userName = parent.ownerUserName;
+        this.groupName = parent.ownerGroupName;
     }
 
     /**
@@ -49,8 +49,8 @@ public class DirectoryBuilder {
     public DirectoryEntry build() {
         var dir = new DirectoryEntry();
         dir.name = name;
-        dir.userName = userName;
-        dir.groupName = groupName;
+        dir.ownerUserName = userName;
+        dir.ownerGroupName = groupName;
         dir.permissions = permissions;
         dir.hidden = hidden;
         dir.root = root;

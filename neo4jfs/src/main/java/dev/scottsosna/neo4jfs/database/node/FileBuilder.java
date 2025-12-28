@@ -40,8 +40,8 @@ public class FileBuilder {
      */
     public FileBuilder(final DirectoryEntry parent) {
         //  Certain values inherited from parent unless overridden.
-        this.userName = parent.userName;
-        this.groupName = parent.groupName;
+        this.userName = parent.ownerUserName;
+        this.groupName = parent.ownerGroupName;
     }
 
     /**
@@ -51,8 +51,8 @@ public class FileBuilder {
     public FileEntry build() {
         FileEntry file = new FileEntry();
         file.name = name;
-        file.userName = userName;
-        file.groupName = groupName;
+        file.ownerUserName = userName;
+        file.ownerGroupName = groupName;
         file.permissions = permissions;
         file.hidden = hidden;
         file.storageId = storageId;

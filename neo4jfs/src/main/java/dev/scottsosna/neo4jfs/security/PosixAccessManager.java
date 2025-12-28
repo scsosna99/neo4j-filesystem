@@ -99,7 +99,7 @@ public class PosixAccessManager implements AccessManager {
      */
     public AccessMode[] checkAccess(BaseEntry entry, AccessMode... modes) {
         if (modes == null || modes.length == 0) return modes;
-        return checkAccessWork(entry.getUserName(), entry.getGroupName(), entry.getPermissions(), modes);
+        return checkAccessWork(entry.getOwnerUserName(), entry.getOwnerGroupName(), entry.getPermissions(), modes);
     }
 
     /**

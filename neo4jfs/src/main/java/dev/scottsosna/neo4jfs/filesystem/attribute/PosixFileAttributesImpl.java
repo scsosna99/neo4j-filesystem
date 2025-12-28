@@ -40,7 +40,7 @@ public class PosixFileAttributesImpl extends BasicFileAttributesImpl implements 
      */
     @Override
     public UserPrincipal owner() {
-        return new UserPrincipalImpl(entry.getUserName());
+        return new UserPrincipalImpl(entry.getOwnerUserName());
     }
 
     /**
@@ -48,7 +48,7 @@ public class PosixFileAttributesImpl extends BasicFileAttributesImpl implements 
      */
     @Override
     public GroupPrincipal group() {
-        return new GroupPrincipalImpl(entry.getGroupName());
+        return new GroupPrincipalImpl(entry.getOwnerGroupName());
     }
 
     /**

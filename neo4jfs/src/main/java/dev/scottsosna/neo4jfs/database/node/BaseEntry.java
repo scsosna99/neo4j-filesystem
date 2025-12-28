@@ -47,15 +47,15 @@ public class BaseEntry {
     /**
      * Username of creator, owner of the entry.
      */
-    String userName;
+    String ownerUserName;
 
     /**
-     * Name of group associated with this entry, usually for security reasons.
+     * Name of owning group for this entry
      */
-    String groupName;
+    String ownerGroupName;
 
     /**
-     * Posix permissions in their typical representation, e.g., "rwxr-xr-x".
+     * Permissions used in conjunction with access manager implementation, such as Posix "rwxr-x---"
      */
     @Setter(AccessLevel.NONE)
     String permissions;

@@ -50,7 +50,7 @@ public class FileOwnerAttributeViewImpl extends BasicFileAttributeViewImpl imple
      */
     @Override
     public UserPrincipal getOwner() throws IOException {
-        return new UserPrincipalImpl(entry.getUserName());
+        return new UserPrincipalImpl(entry.getOwnerUserName());
     }
 
     /**
@@ -60,7 +60,7 @@ public class FileOwnerAttributeViewImpl extends BasicFileAttributeViewImpl imple
      */
     @Override
     public void setOwner(UserPrincipal owner) throws IOException {
-        entry.setUserName(owner.getName());
+        entry.setOwnerUserName(owner.getName());
         persist();
     }
 }
