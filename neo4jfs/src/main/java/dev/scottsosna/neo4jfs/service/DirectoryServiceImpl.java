@@ -394,6 +394,9 @@ public class DirectoryServiceImpl extends BaseNeo4jfsService implements Director
             case BasicFileAttributeViewImpl.VIEW_NAME:
                 setAttributeBasic(entry, attribute, value);
                 break;
+            case PosixFileAttributeViewImpl.VIEW_NAME:
+                setAttributePosix(entry, attribute, value);
+                break;
             default:
                 //  Generally view name has already been validated, but just in case.
                 throw new IllegalArgumentException("Setting attribute not supported for view: %s".formatted(attribute));
@@ -725,6 +728,37 @@ public class DirectoryServiceImpl extends BaseNeo4jfsService implements Director
                     entryToUpdate.setLastModified(Instant.ofEpochMilli(l));
                 else
                     throw new IllegalArgumentException("Invalid attribute value for %s".formatted(attribute));
+                break;
+            default:
+                throw new IllegalArgumentException("Setting attribute not supported: %s".formatted(attribute));
+        }
+    }
+
+    /**
+     * Updates entry for "basic" view attributes
+     * @param entryToUpdate entry to update
+     * @param attribute attribute name to modify
+     * @param value new attribute value
+     * @throws IOException if an I/O error occurs, such as invalid attribute value.
+     */
+    private void setAttributePosix(final BaseEntry entryToUpdate,
+                                   final String attribute,
+                                   final Object value) throws IOException {
+
+        switch (attribute) {
+            case POSIX_ATTRIBUTE_GROUP:
+                if (value instanceof String s) {
+                    entryToUpdate.setOwnerGroupName(s);
+                } else {
+                    throw new IllegalArgumentException("Invalid attribute value for %s".formatted(attribute));
+                }
+                break;
+            case POSIX_ATTRIBUTE_OWNER:
+                if (value instanceof String s) {
+                    entryToUpdate.setOwnerUserName(s);
+                } else {
+                    throw new IllegalArgumentException("Invalid attribute value for %s".formatted(attribute));
+                }
                 break;
             default:
                 throw new IllegalArgumentException("Setting attribute not supported: %s".formatted(attribute));

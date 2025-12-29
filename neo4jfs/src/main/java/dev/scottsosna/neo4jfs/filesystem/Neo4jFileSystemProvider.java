@@ -16,6 +16,7 @@ package dev.scottsosna.neo4jfs.filesystem;
 
 import dev.scottsosna.neo4jfs.config.Neo4jfsConstants;
 import dev.scottsosna.neo4jfs.filesystem.attribute.BasicFileAttributeViewImpl;
+import dev.scottsosna.neo4jfs.filesystem.attribute.PosixFileAttributeViewImpl;
 import dev.scottsosna.neo4jfs.service.DirectoryService;
 import dev.scottsosna.neo4jfs.service.FileService;
 import dev.scottsosna.neo4jfs.service.FileSystemService;
@@ -33,7 +34,6 @@ import java.nio.file.attribute.*;
 import java.nio.file.spi.FileSystemProvider;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.stream.Collectors;
 
 import static dev.scottsosna.neo4jfs.config.Neo4jfsConstants.*;
 
@@ -391,10 +391,16 @@ public class Neo4jFileSystemProvider extends FileSystemProvider {
         List<String> validated = validateAttributes(viewName, attributes);
 
         //  Retrieve attributes for path.
-        BasicFileAttributes fileAttributes = readAttributes(path, BasicFileAttributes.class, options);
+        switch (viewName) {
+            case BasicFileAttributeViewImpl.VIEW_NAME -> {
+                return buildAttributeMapBasic(validated, readAttributes(path, BasicFileAttributes.class, options));
+            }
+            case PosixFileAttributeViewImpl.VIEW_NAME -> {
+                return buildAttributeMapPosix(validated, readAttributes(path, PosixFileAttributes.class, options));
+            }
+        }
 
-        //  Build map of requested attributes and their valies.
-        return buildAttributeMap(viewName, validated, fileAttributes);
+        return Map.of();
     }
 
     /**
@@ -584,6 +590,31 @@ public class Neo4jFileSystemProvider extends FileSystemProvider {
     }
 
     /**
+     * Build the attribute map for the "posix" view.
+     *
+     * @param attributes validated list of attributes to return
+     * @param file the file/directory for which we want attributes
+     * @return Map of requested attributes and their values.
+     */
+    private Map<String,Object> buildAttributeMapPosix(final List<String> attributes,
+                                                      final PosixFileAttributes file) {
+        Map<String,Object> toReturn = new HashMap<>(attributes.size());
+        for (String attr : attributes) {
+            switch (attr) {
+                case POSIX_ATTRIBUTE_OWNER:
+                    toReturn.put(POSIX_ATTRIBUTE_OWNER, file.owner().getName());
+                    break;
+                case POSIX_ATTRIBUTE_GROUP:
+                    toReturn.put(POSIX_ATTRIBUTE_GROUP, file.group().getName());
+                default:
+                    // By this point we should be good, so just ignore if something unexpected seen.
+            }
+        }
+
+        return toReturn;
+    }
+
+    /**
      * Validate the attributes for the requested view.
      * @see <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/nio/file/Files.html#readAttributes(java.nio.file.Path,java.lang.String,java.nio.file.LinkOption...)"/>
      *
@@ -609,6 +640,8 @@ public class Neo4jFileSystemProvider extends FileSystemProvider {
         switch (viewName) {
             case BasicFileAttributeViewImpl.VIEW_NAME:
                 return validateAttribsBasic(split);
+            case PosixFileAttributeViewImpl.VIEW_NAME:
+                return validateAttribsPosix(split);
             default:
                 //  view name _should_ have been validated earlier, therefore don't expect to get here.
                 throw new UnsupportedOperationException(viewName);
@@ -629,7 +662,26 @@ public class Neo4jFileSystemProvider extends FileSystemProvider {
             if (unknown.isEmpty()) {
                 return attributes;
             } else {
-                throw new IllegalArgumentException("Invalid attribute: " + unknown.stream().collect(Collectors.joining(",")));
+                throw new IllegalArgumentException("Invalid attribute: " + String.join(",", unknown));
+            }
+        }
+    }
+
+    /**
+     * Validate the attribute names for the "posix" view.
+     *
+     * @param attributes list of attributes to validate
+     * @return subset of attributes for this view, or all if '*' provided.
+     */
+    private List<String> validateAttribsPosix(final List<String> attributes) {
+        if (attributes.size() == 1 && attributes.getFirst().equals(ATTRIBUTE_WILDCARD_ALL)) {
+            return POSIX_ATTRIBUTES_ALL;
+        } else {
+            List<String> unknown = attributes.stream().filter(a -> !POSIX_ATTRIBUTES_ALL.contains(a)).toList();
+            if (unknown.isEmpty()) {
+                return attributes;
+            } else {
+                throw new IllegalArgumentException("Invalid attribute: " + String.join(",", unknown));
             }
         }
     }

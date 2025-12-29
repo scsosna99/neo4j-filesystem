@@ -110,4 +110,13 @@ public class Neo4jfsConstants {
         BASIC_ATTRIBUTE_IS_SYMBOLIC_LINK,
         BASIC_ATTRIBUTE_SIZE
     );
+
+    /**
+     * The string equivalents exposed by {@code FileOwnerAttributeView}
+     */
+    public static final String POSIX_ATTRIBUTE_GROUP = "group";
+    public static final String POSIX_ATTRIBUTE_OWNER = "owner";
+    public static final List<String> POSIX_ATTRIBUTES_ALL = List.of(
+        POSIX_ATTRIBUTE_GROUP,
+        POSIX_ATTRIBUTE_OWNER);
 }
