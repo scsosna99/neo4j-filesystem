@@ -15,6 +15,7 @@
 package dev.scottsosna.neo4jfs.filesystem;
 
 import dev.scottsosna.neo4jfs.config.Neo4jfsConstants;
+import org.springframework.web.util.UriUtils;
 
 import java.io.IOException;
 import java.net.URI;
@@ -211,7 +212,7 @@ public class Neo4jfsPath implements Path {
      */
     @Override
     public URI toUri() {
-        return fs.getUri().resolve(pathString);
+        return fs.getUri().resolve(UriUtils.encodePath(pathString, "UTF-8"));
     }
 
     /**
