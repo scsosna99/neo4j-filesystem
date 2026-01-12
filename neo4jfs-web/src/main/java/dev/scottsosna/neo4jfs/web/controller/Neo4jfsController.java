@@ -19,6 +19,7 @@ import java.net.URI;
 public class Neo4jfsController {
 
     static final private String NEO4J_URI_TEMPLATE = "neo4jfs://%s/";
+
     /**
      * Constructor.  Only available to child classes.
      */

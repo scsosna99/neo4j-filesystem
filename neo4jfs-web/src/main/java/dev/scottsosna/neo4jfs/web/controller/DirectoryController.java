@@ -17,6 +17,8 @@ package dev.scottsosna.neo4jfs.web.controller;
 import dev.scottsosna.neo4jfs.service.DirectoryService;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 import java.io.IOException;
 import java.net.URI;
@@ -25,6 +27,8 @@ import java.net.URI;
  * API endpoints for managing Neo4Jfs directories.
  */
 @RestController
+@SecurityRequirement(name = "basicAuth")
+@PreAuthorize("isAuthenticated()")
 @RequestMapping( value = "/neo4jfs/api/directory/{partitionId}")
 public class DirectoryController extends Neo4jfsController {
 

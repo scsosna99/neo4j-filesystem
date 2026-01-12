@@ -17,6 +17,8 @@ package dev.scottsosna.neo4jfs.web.controller;
 import dev.scottsosna.neo4jfs.service.FileSystemService;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 import java.io.IOException;
 
@@ -24,6 +26,8 @@ import java.io.IOException;
  * API endpoints for managing Neo4J file system.
  */
 @RestController
+@SecurityRequirement(name = "basicAuth")
+@PreAuthorize("isAuthenticated()")
 @RequestMapping( value = "/neo4jfs/api/filesystem/{partitionId}")
 public class FileSystemController extends Neo4jfsController {
 
