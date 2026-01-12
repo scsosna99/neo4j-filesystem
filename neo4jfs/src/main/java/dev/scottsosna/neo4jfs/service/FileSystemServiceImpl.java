@@ -79,9 +79,6 @@ public class FileSystemServiceImpl extends BaseNeo4jfsService implements FileSys
      * @param fsUri Neo4Jfs URI for the file system to initialize.
      */
     public void init(final URI fsUri) throws IOException {
-        //  Admin-only operation.
-        checkAccessAdmin();
-
         //  Does a database exist for the partition?
         checkUri(fsUri);
         Database db = repository.find(fsUri);
@@ -90,7 +87,8 @@ public class FileSystemServiceImpl extends BaseNeo4jfsService implements FileSys
             verifyDatabaseUsability(db);
             directoryService.findOrCreateRoot(fsUri);
         } else {
-            //  No existing database, create new and add root directory.
+            //  No existing database, create new and add root directory.  Admin-only operation.
+            checkAccessAdmin();
             repository.create(fsUri);
             directoryService.createRoot(fsUri);
         }
