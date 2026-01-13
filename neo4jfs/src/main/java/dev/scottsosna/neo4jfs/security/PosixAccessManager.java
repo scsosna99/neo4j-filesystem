@@ -246,7 +246,7 @@ public class PosixAccessManager implements AccessManager {
 
         //  We can reduce/simplify work required when only single mode needs to be checked.
         if (modes.length == 1) {
-            return checkAccessSingleMode(ownerPermissions, groupPermissions, otherPermissions, modes[0]) ? modes : EMPTY_ACCESS_MODES;
+            return checkAccessSingleMode(ownerPermissions, groupPermissions, otherPermissions, modes[0]) ? EMPTY_ACCESS_MODES : modes;
         }
         return checkAccess(ownerPermissions, groupPermissions, otherPermissions, modes);
     }
