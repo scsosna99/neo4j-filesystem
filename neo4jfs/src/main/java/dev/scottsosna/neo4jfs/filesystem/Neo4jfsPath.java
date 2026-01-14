@@ -187,7 +187,7 @@ public class Neo4jfsPath implements Path {
             case Neo4jfsPath npath:
                 return new Neo4jfsPath(fs, path.resolve(npath.path));
             default:
-                return path.resolve(other);
+                return new Neo4jfsPath(fs, path.resolve(other));
         }
     }
 
