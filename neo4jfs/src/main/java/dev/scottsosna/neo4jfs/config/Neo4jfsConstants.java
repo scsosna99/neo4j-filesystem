@@ -52,6 +52,13 @@ public class Neo4jfsConstants {
     public static final String NEO4JFS_URI_SCHEME = "neo4jfs";
 
     /**
+     * Format of the Neo4Jfs URI with the partition ID to be substituted in.
+     */
+    public static final String NEO4J_URI_TEMPLATE = "neo4jfs://%s/";
+
+
+
+    /**
      * Parameters used in Cypher queries.
      */
     public static final String CYPHER_PARAM_NODEID = "id";
