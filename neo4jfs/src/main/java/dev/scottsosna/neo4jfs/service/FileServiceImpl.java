@@ -215,6 +215,7 @@ public class FileServiceImpl extends BaseNeo4jfsService implements FileService {
      */
     public void delete(final URI uri) throws IOException {
         FileEntry fe = prologueExistingFile(uri, false);
+        checkAccess(fe, AccessMode.READ, AccessMode.WRITE);
         deleteWork(uri, fe);    //  checks WRITE access
     }
 
@@ -323,6 +324,10 @@ public class FileServiceImpl extends BaseNeo4jfsService implements FileService {
 
         //  Add to the parent directory.
         directoryService.addFile(uri, parentDirectory, f);
+
+        // Newly-built entry hasn't had its permissions determined as when existing entry is retrieved from Neo4J so
+        // manually force permissions to be determined (always from parent directory)
+        f.deriveInheritedPermissions(parentDirectory);
 
         return f;
     }

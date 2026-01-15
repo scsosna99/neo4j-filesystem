@@ -28,7 +28,7 @@ import java.util.Set;
  * Demo03: Posix permissions demo where permissions are inherited where they aren't defined on directory/file/.
  */
 @Service("demo03")
-public class Demo03 implements Demo  {
+public class Demo03 extends Demo  {
 
     @Override
     public void demo() {

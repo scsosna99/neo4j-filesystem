@@ -28,10 +28,10 @@ import java.nio.file.*;
 import java.util.Map;
 
 /**
- * Demo01: Create a new Neo4Jfs file system, create directories, load files.  Nothing too fancy.
+ * Demo02: Create a new Neo4Jfs file system, create directories, load files.  Again, nothing too fancy.
  */
 @Service("demo02")
-public class Demo02 implements Demo {
+public class Demo02 extends Demo {
 
     @Override
     public void demo() {

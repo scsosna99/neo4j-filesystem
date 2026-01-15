@@ -356,15 +356,19 @@ public class DirectoryServiceImpl extends BaseNeo4jfsService implements Director
         if (pathEntries == null || pathEntries.isEmpty()) {
             throw new NoSuchFileException("%s: no such file or directory".formatted(uri));
         }
+
+        //  Check permissions
+        BaseEntry target = pathEntries.getLast();
+        checkAccess(target, AccessMode.READ);
         
         //  Work done is dependent on the view requested.
         if (clazz == BasicFileAttributeView.class) {
             //  BaseEntry implements BasicFileAttributeView.
-            return new BasicFileAttributeViewImpl(pathEntries.getLast());
+            return new BasicFileAttributeViewImpl(target);
         } else if (clazz == FileOwnerAttributeView.class) {
-            return new FileOwnerAttributeViewImpl(pathEntries.getLast());
+            return new FileOwnerAttributeViewImpl(target);
         } else if (clazz == PosixFileAttributeView.class) {
-            return new PosixFileAttributeViewImpl(pathEntries.getLast());
+            return new PosixFileAttributeViewImpl(target);
         } else {
             throw new IllegalArgumentException("Requested view not supported: %s".formatted(clazz.getName()));
         }
@@ -388,7 +392,7 @@ public class DirectoryServiceImpl extends BaseNeo4jfsService implements Director
 
         //  Get entry and check user's access to ensure user permitted to update/set attributes.
         BaseEntry entry = find(uri).getLast();
-        checkAccess(entry, AccessMode.WRITE);
+        checkAccess(entry, AccessMode.READ, AccessMode.WRITE);
 
         switch (viewName) {
             case BasicFileAttributeViewImpl.VIEW_NAME:

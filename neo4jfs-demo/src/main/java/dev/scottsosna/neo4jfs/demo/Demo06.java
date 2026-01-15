@@ -12,9 +12,12 @@
  * expressed or implied. See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package dev.scottsosna.neo4jfs.demo;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.util.FileSystemUtils;
 
 import java.io.IOException;
 import java.net.URI;
@@ -25,31 +28,22 @@ import java.nio.file.Path;
 import java.util.Map;
 
 /**
- * Demo04: Temp directories and files.
+ * Demo06: copies user's home into Neo4Jfs, useful for perf testing Neo4Jfs side of things.
+ * NOTE: Highly recommended that you run this with the dummy storage manager which doesn't actually store anything; otherwise
+ * you'll be making a complete copy of all your files and likely filling up your disk.  Be Careful!
  */
-@Service("demo04")
-public class Demo04 extends Demo  {
+@Slf4j
+@Service("demo06")
+public class Demo06 extends Demo  {
 
     @Override
     public void demo() {
         try (FileSystem fs = FileSystems.newFileSystem(URI.create("neo4jfs://neo4jfs-demo"), Map.of())) {
-
-            //  Create a directory for temp files, etc.
-            Path baseTemp = fs.getPath("data", "temp");
-            Files.createDirectory(baseTemp);
-
-            //  Create a temporary directory.
-            Path tempDir = Files.createTempDirectory(baseTemp, "tempdir");
-
-            //  Create a bunch of temp files.
-            for (int i = 0; i < 10; i++) {
-                Files.createTempFile(tempDir, "tempfile", ".tmp");
-            }
-
-            //  Print out file names in the temporary directory.
-            Files.newDirectoryStream(tempDir).forEach(path -> {System.out.println(path.toString());});
+            Files.createDirectory(fs.getPath("/data"));
+            FileSystemUtils.copyRecursively(Path.of(System.getProperty("user.home")), fs.getPath("/data"));
         } catch (IOException e) {
+            System.out.println("Something bad happened: " + e.getMessage());
             e.printStackTrace();
         }
-     }
+    }
 }

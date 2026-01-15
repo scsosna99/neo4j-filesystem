@@ -27,7 +27,7 @@ import java.util.Map;
  * Demo01: Create a new Neo4Jfs file system, create directories, load files.  Nothing too fancy.
  */
 @Service("demo01")
-public class Demo01 implements Demo  {
+public class Demo01 extends Demo  {
 
     @Override
     public void demo() {
