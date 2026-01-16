@@ -354,7 +354,7 @@ public class DirectoryServiceImpl extends BaseNeo4jfsService implements Director
         //  Always retrieve the path first to immediately notify if file/directory URI is invalid.
         List<BaseEntry> pathEntries = find(uri);
         if (pathEntries == null || pathEntries.isEmpty()) {
-            throw new NoSuchFileException("%s: no such file or directory".formatted(uri));
+            throw new AccessDeniedException("%s: no such file or directory".formatted(uri));
         }
 
         //  Check permissions
