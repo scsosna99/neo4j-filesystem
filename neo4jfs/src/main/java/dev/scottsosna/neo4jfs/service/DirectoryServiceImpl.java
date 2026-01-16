@@ -204,7 +204,7 @@ public class DirectoryServiceImpl extends BaseNeo4jfsService implements Director
         //  Retrieve children from Neo4J but only return those which user has READ access.
         return repository.getChildren(fsUri, parent, skip, limit)
             .stream()
-            .filter(e -> checkAccessNoThrows(e, AccessMode.READ) != null)
+            .filter(e -> checkAccessNoThrows(e, AccessMode.READ) == null)
             .toList();
     }
 
@@ -225,7 +225,7 @@ public class DirectoryServiceImpl extends BaseNeo4jfsService implements Director
         //  Retrieve subdirectories from Neo4J but only return those which user has READ access.
         return repository.getSubdirs(fsUri, parent, skip, limit)
             .stream()
-            .filter(e -> checkAccessNoThrows(e, AccessMode.READ) != null)
+            .filter(e -> checkAccessNoThrows(e, AccessMode.READ) == null)
             .toList();
     }
 
