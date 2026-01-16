@@ -59,7 +59,7 @@ public class DummyAccessManager implements AccessManager {
      * @return empty array to emulate successful check.
      */
     @Override
-    public AccessMode[] checkAccess(BaseEntry entry, AccessMode... modes) {
+    public AccessMode[] checkAccess(final BaseEntry entry, final AccessMode... modes) {
         return new AccessMode[0];
     }
 
@@ -109,6 +109,14 @@ public class DummyAccessManager implements AccessManager {
     public String rootPermissions() {
         return rootPermissions;
     }
+
+    /**
+     * @return name of current authenticaated user
+     */
+    public String userName() {
+        return "dummy";
+    }
+
 
     /**
      * Validate the permission string against the regex.

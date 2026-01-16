@@ -65,18 +65,28 @@ public class FileBuilder {
      * Setters for mutable properties.
      * ------------------------------------------------------------------------ */
 
-    public FileBuilder setName(String name) {
+    public FileBuilder setGroupName(final String groupName) {
+        this.groupName = groupName;
+        return this;
+    }
+
+    public FileBuilder setName(final String name) {
         this.name = name;
         return this;
     }
 
-    public FileBuilder setStorageId(String storageId) {
+    public FileBuilder setStorageId(final String storageId) {
         this.storageId = storageId;
         return this;
     }
 
-    public FileBuilder setSize(Long size) {
+    public FileBuilder setSize(final Long size) {
         this.size = size;
+        return this;
+    }
+
+    public FileBuilder setUserName(final String userName) {
+        this.userName = userName;
         return this;
     }
 }

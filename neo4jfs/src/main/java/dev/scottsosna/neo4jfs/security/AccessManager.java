@@ -27,7 +27,7 @@ public interface AccessManager {
      * @param modes requested access modes
      * @return an empty array if all checks pass, otherwise the {@code AccessMode}s that failed.
      */
-    AccessMode[] checkAccess(BaseEntry entry, AccessMode... modes);
+    AccessMode[] checkAccess(final BaseEntry entry, final AccessMode... modes);
 
     /**
      * Convert set of {@link PosixFilePermission} to the form required by {@code AccessManager} implementation.
@@ -63,6 +63,11 @@ public interface AccessManager {
      * @return root directory permissions used when creating file system.
      */
     String rootPermissions();
+
+    /**
+     * @return name of current authenticaated user
+     */
+    String userName();
 
     /**
      * Validate the permission string against the {@code AccessManager} expected form.

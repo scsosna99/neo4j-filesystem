@@ -199,6 +199,7 @@ public class FileServiceImpl extends BaseNeo4jfsService implements FileService {
         //  Create/persist new file entry.
         FileEntry f = new FileBuilder(targetDirectory)
             .setName(fileName)
+            .setUserName(accessManager.userName())
             .setStorageId(info.getStorageId())
             .setSize(info.getSize())
             .build();
@@ -317,6 +318,7 @@ public class FileServiceImpl extends BaseNeo4jfsService implements FileService {
         //  Create/persist new file entry.
         FileEntry f = new FileBuilder(parentDirectory)
             .setName(fileName)
+            .setUserName(accessManager.userName())
             .setStorageId(info.getStorageId())
             .setSize(info.getSize())
             .build();

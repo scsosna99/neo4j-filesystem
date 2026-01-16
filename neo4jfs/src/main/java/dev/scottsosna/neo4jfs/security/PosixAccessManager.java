@@ -97,7 +97,7 @@ public class PosixAccessManager implements AccessManager {
      * @param modes requested access modes
      * @return an empty array if all checks pass, otherwise the {@code AccessMode}s that failed.
      */
-    public AccessMode[] checkAccess(BaseEntry entry, AccessMode... modes) {
+    public AccessMode[] checkAccess(final BaseEntry entry, final AccessMode... modes) {
         if (modes == null || modes.length == 0) return modes;
         return checkAccessWork(
             entry.getOwnerUserName(),
@@ -200,6 +200,14 @@ public class PosixAccessManager implements AccessManager {
     public boolean validatePermissions(final String permissions) {
         return validation.matcher(permissions).matches();
     }
+
+    /**
+     * @return name of current authenticaated user
+     */
+    public String userName() {
+        return determineAuthentication().getName();
+    }
+
 
     /**
      * Primary method for doing (once) prep before making calls to do the actual checks.
