@@ -66,7 +66,7 @@ public class BasicFileAttributeViewImpl implements java.nio.file.attribute.Basic
      */
     @Override
     public BasicFileAttributes readAttributes() throws IOException {
-        return new BasicFileAttributesImpl( entry);
+        return new BasicFileAttributesImpl(entry);
     }
 
     /**
