@@ -306,7 +306,7 @@ public class FileServiceImpl extends BaseNeo4jfsService implements FileService {
 
         //  Confirm user has permissions to create file in parent directory.
         DirectoryEntry parentDirectory = (DirectoryEntry) parent;
-        checkAccess(parentDirectory, AccessMode.WRITE);
+        checkAccess(parentDirectory, AccessMode.WRITE, AccessMode.EXECUTE);
 
         //  Is there already a file or subdir with the same name?
         String fileName = Path.of(uri).getFileName().toString();
@@ -380,6 +380,9 @@ public class FileServiceImpl extends BaseNeo4jfsService implements FileService {
                 throw new NoSuchFileException("%s: no such file or directory".formatted(uri));
             }
         } else {
+            //  Parent directory requires execute permissions.
+            checkAccess(parts.get(parts.size() - 2), AccessMode.EXECUTE);
+
             //  Requires at least READ access, caller checks for WRITE if necessary.
             entry = parts.getLast();
             checkAccess(entry, AccessMode.READ);

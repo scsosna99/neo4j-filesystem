@@ -101,7 +101,7 @@ public class Neo4jfsDirectoryStream implements DirectoryStream<Path>, AutoClosea
     /**
      *  Retrieve page worth of subdirectories from Neo4J.
      */
-    private void queryForChildren() {
+    private void queryForChildren() throws IOException {
         if (!exhausted) {
             this.children = service.findChildren(uri, d, skippedCount, paginationMaxPerCall);
             this.exhausted = this.children == null || this.children.size() < paginationMaxPerCall;
@@ -163,12 +163,17 @@ public class Neo4jfsDirectoryStream implements DirectoryStream<Path>, AutoClosea
             //  Iterator exhausted, any reason to believe another query will return more?
             if (exhausted) return false;
 
-            //  Possibly more, query and attempt to reload internal iterator.
-            ds.queryForChildren();
-            if (ds.d != null && !ds.children.isEmpty()) {
-                //  More found, create new internal iterator.
-                childIterator = ds.children.iterator();
-                return childIterator.hasNext();
+            try {
+                //  Possibly more, query and attempt to reload internal iterator.
+                ds.queryForChildren();
+                if (ds.d != null && !ds.children.isEmpty()) {
+                    //  More found, create new internal iterator.
+                    childIterator = ds.children.iterator();
+                    return childIterator.hasNext();
+                }
+            } catch (IOException e) {
+                //  ds.queryForChildren throws some form of IOException if the current user does not have
+                //  permission to read the directory, in which case we fall through and return false.
             }
 
             //  no more subdirectories found so sayonara.

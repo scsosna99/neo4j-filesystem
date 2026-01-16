@@ -76,17 +76,17 @@ public interface DirectoryService {
      * @param limit pagination: how many children returned
      * @return list of BaseEntry for the children or an empty list.
      */
-    List<BaseEntry> findChildren(final URI fsUri, final DirectoryEntry parent, final int skip, final int limit);
+    List<BaseEntry> findChildren(final URI fsUri, final DirectoryEntry parent, final int skip, final int limit)  throws IOException;
 
     /**
-     * Return a list of all children entries (files, subdirectories, etc) for the directory specified.
+     * Return a list of all subdirectories for the directory specified.
      * @param fsUri Neo4Jfs base URI
      * @param parent specific directory for which children are returned
      * @param skip pagination: how many children skipped
      * @param limit pagination: how many children returned
      * @return list of DirectoryEntry or an empty list.
      */
-    List<DirectoryEntry> findSubdirs(final URI fsUri, final DirectoryEntry parent, final int skip, final int limit);
+    List<DirectoryEntry> findSubdirs(final URI fsUri, final DirectoryEntry parent, final int skip, final int limit) throws IOException;
 
     /**
      * Copy file or directory to new location
@@ -146,7 +146,7 @@ public interface DirectoryService {
      * @param limit pagination: how many subdirs returned
      * @return updated {@code DirectoryEntry} with children collections
      */
-    List<FileEntry> findFiles(final URI fsUri, final DirectoryEntry parent, final int skip, final int limit);
+    List<FileEntry> findFiles(final URI fsUri, final DirectoryEntry parent, final int skip, final int limit) throws IOException;
 
     /**
      * Returns the entry specified by URI as BasicFileAttributeView, needed by file system provider.

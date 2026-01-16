@@ -152,7 +152,7 @@ public class DirectoryServiceImpl extends BaseNeo4jfsService implements Director
         //  Ensure that immediate parent entry of the new directory is a directory.
         if (entries.getLast() instanceof DirectoryEntry dir) {
             //  Confirm write access to parent directory.
-            checkAccess(dir, AccessMode.READ, AccessMode.WRITE);
+            checkAccess(dir, AccessMode.WRITE, AccessMode.EXECUTE);
 
             //  Make sure the name requested doesn't already exist
             BaseEntry child = repository.findNamedChild(uri, dir.getId(), path.getFileName().toString());
@@ -163,6 +163,7 @@ public class DirectoryServiceImpl extends BaseNeo4jfsService implements Director
             //  Build a new directory node and persist it.
             DirectoryEntry newbie = new DirectoryBuilder(dir)
                 .name(path.getFileName().toString())
+                .userName(accessManager.userName())
                 .root(false)
                 .build();
             return repository.create(uri, newbie, dir);
@@ -180,7 +181,11 @@ public class DirectoryServiceImpl extends BaseNeo4jfsService implements Director
     public List<BaseEntry> find(final URI uri) {
         checkUri(uri);
         List<BaseEntry> entries = repository.find(uri, Path.of(uri));
-        if (entries != null && !entries.isEmpty() && checkAccessNoThrows(entries.getLast(), AccessMode.READ) == null) {
+
+        if (entries != null &&
+            !entries.isEmpty() &&
+            (entries.size() == 1 || checkAccessNoThrows(entries.get(entries.size() - 2), AccessMode.EXECUTE) == null) &&
+            checkAccessNoThrows(entries.getLast(), AccessMode.READ) == null) {
             return entries;
         } else {
             return List.of();
@@ -198,13 +203,16 @@ public class DirectoryServiceImpl extends BaseNeo4jfsService implements Director
     public List<BaseEntry> findChildren(final URI fsUri,
                                         final DirectoryEntry parent,
                                         final int skip,
-                                        final int limit) {
+                                        final int limit) throws IOException {
         checkUri(fsUri);
+
+        //  Must have READ and EXECUTE for parent directory to list directory's content
+        checkAccess(parent, AccessMode.READ, AccessMode.EXECUTE);
 
         //  Retrieve children from Neo4J but only return those which user has READ access.
         return repository.getChildren(fsUri, parent, skip, limit)
             .stream()
-            .filter(e -> checkAccessNoThrows(e, AccessMode.READ) == null)
+            .filter(e -> checkAccessNoThrows(e, AccessMode.READ) == null || checkAccessNoThrows(e, AccessMode.WRITE) == null)
             .toList();
     }
 
@@ -219,13 +227,16 @@ public class DirectoryServiceImpl extends BaseNeo4jfsService implements Director
     public List<DirectoryEntry> findSubdirs(final URI fsUri,
                                             final DirectoryEntry parent,
                                             final int skip,
-                                            final int limit) {
+                                            final int limit) throws IOException {
         checkUri(fsUri);
+
+        //  Must have READ and EXECUTE for parent directory to list directory's content
+        checkAccess(parent, AccessMode.READ, AccessMode.EXECUTE);
 
         //  Retrieve subdirectories from Neo4J but only return those which user has READ access.
         return repository.getSubdirs(fsUri, parent, skip, limit)
             .stream()
-            .filter(e -> checkAccessNoThrows(e, AccessMode.READ) == null)
+            .filter(e -> checkAccessNoThrows(e, AccessMode.READ) == null || checkAccessNoThrows(e, AccessMode.WRITE) == null)
             .toList();
     }
 
@@ -333,8 +344,9 @@ public class DirectoryServiceImpl extends BaseNeo4jfsService implements Director
     public List<FileEntry> findFiles(final URI fsUri,
                                      final DirectoryEntry parent,
                                      final int skip,
-                                     final int limit) {
+                                     final int limit) throws IOException {
         checkUri(fsUri);
+        checkAccess(parent, AccessMode.READ, AccessMode.EXECUTE);
         return repository.getFiles(fsUri, parent, skip, limit);
     }
 
@@ -355,6 +367,11 @@ public class DirectoryServiceImpl extends BaseNeo4jfsService implements Director
         List<BaseEntry> pathEntries = find(uri);
         if (pathEntries == null || pathEntries.isEmpty()) {
             throw new AccessDeniedException("%s: no such file or directory".formatted(uri));
+        }
+
+        //  Must have execute rights on directory even when specifying full path.
+        if (pathEntries.size() > 1) {
+            checkAccess(pathEntries.get(pathEntries.size() - 2), AccessMode.EXECUTE);
         }
 
         //  Check permissions
@@ -389,6 +406,9 @@ public class DirectoryServiceImpl extends BaseNeo4jfsService implements Director
                              final Object value,
                              final LinkOption... options) throws IOException {
         checkUri(uri);
+
+        //  Must have execute rights on directory even when specifying full path.
+        checkAccess(find(uri).get(find(uri).size() - 2), AccessMode.EXECUTE);
 
         //  Get entry and check user's access to ensure user permitted to update/set attributes.
         BaseEntry entry = find(uri).getLast();

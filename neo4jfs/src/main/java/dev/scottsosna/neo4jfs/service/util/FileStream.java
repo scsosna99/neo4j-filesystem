@@ -80,7 +80,7 @@ public class FileStream implements Iterable<FileEntry>, Closeable, AutoCloseable
     /**
      *  Retrieve page worth of files from Neo4J.
      */
-    private void queryForFiles() {
+    private void queryForFiles() throws IOException {
         if (!exhausted) {
             this.files = service.findFiles(fsUri, d, skippedCount, paginationMaxPerCall);
             this.exhausted = this.files == null || this.files.size() < paginationMaxPerCall;
@@ -142,11 +142,16 @@ public class FileStream implements Iterable<FileEntry>, Closeable, AutoCloseable
             //  Iterator exhausted, any reason to believe another query will return more?
             if (exhausted) return false;
 
-            //  Possibly more, query and attempt to reload internal iterator.
-            ds.queryForFiles();
-            if (ds.files != null && !ds.files.isEmpty()) {
-                fileIterator = ds.files.iterator();
-                return fileIterator.hasNext();
+            try {
+                //  Possibly more, query and attempt to reload internal iterator.
+                ds.queryForFiles();
+                if (ds.files != null && !ds.files.isEmpty()) {
+                    fileIterator = ds.files.iterator();
+                    return fileIterator.hasNext();
+                }
+            } catch (IOException ioe) {
+                //  Exception thrown when caller does not have EXECUTE permissions on directory.  Fall through
+                //  and return false.
             }
 
             //  no more subdirectories found so sayonara.
