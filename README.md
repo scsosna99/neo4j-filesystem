@@ -68,5 +68,6 @@ See the [Neo4Jfs Demo](neo4jfs-demo/README.md) for more examples of using `Neo4J
 * Extend security beyond simple Posix permissions to support ACLS.
 * Add additional APIs to sample web app for more than the most simple file management.
 * Detailed security testing.  If there's any area that may have issues, it's security. 
+* Caching Cypher statements generated, avoid re-generating them for every query.
 * More than just perfunctory performance testing.  Benchmark against other file systems, load testing, access testing, etc.
 * Unit tests.
