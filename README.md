@@ -44,7 +44,7 @@ The URI scheme for `Noe4Jfs` is `neo4jfs`.  A complete URI has the form `neo4jfs
 
 The `Noe4Jfs` storage manager is responsible for writing/reading file contents to/from external storage.  The project supports two different storage manager:
 * **local**: the default storage manager using local disk storage, location specified by the location specified by `neo4jfs.local.directory` or from current working directory. 
-* **dummy**: the no-op storage manager that does not persist file contents to an external location, useful for testing mananging the file tree.
+* **dummy**: the no-op storage manager that does not persist file contents to an external location, useful when testing file tree functionality and actual file contents are not important.
 
 A custom storage manager can be implemented by implementing the `dev.scottsosna.neo4js.storage.StorageManager` interface.
 
