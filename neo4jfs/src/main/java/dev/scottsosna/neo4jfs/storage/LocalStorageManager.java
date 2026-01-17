@@ -49,7 +49,7 @@ public class LocalStorageManager implements StorageManager {
     /**
      * The base directory where Neo4Jfs files will be stored.
      */
-    @Value("${neo4jis.local.directory:#{null}}")
+    @Value("${neo4jfs.local.directory:#{null}}")
     private String neo4jfsBasePath;
 
     /**
