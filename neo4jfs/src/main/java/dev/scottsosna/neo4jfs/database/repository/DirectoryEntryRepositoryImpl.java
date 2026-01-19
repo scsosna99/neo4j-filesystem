@@ -21,6 +21,7 @@ import dev.scottsosna.neo4jfs.database.node.DirectoryBuilder;
 import dev.scottsosna.neo4jfs.database.node.DirectoryEntry;
 import dev.scottsosna.neo4jfs.database.node.FileEntry;
 import dev.scottsosna.neo4jfs.database.repository.util.AddCypherClauseConsumer;
+import jakarta.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -38,6 +39,19 @@ import static dev.scottsosna.neo4jfs.config.Neo4jfsConstants.*;
 public class DirectoryEntryRepositoryImpl extends BaseEntryRepositoryImpl implements DirectoryEntryRepository {
 
     /**
+     * For Neo4J OGM performance reasons, the Cypher queries use substitution parameters, therefore the query for any give path depth
+     * is the same.  To avoid constant string building, we can prebuild the match and return strings and store them in simple structure
+     * for easy access during query execution.
+     */
+    private String[] prebuiltQueryMatch;
+    private String[] prebuiltQueryReturn;
+
+    /**
+     * How many prebuilt queries to generate at startup.
+     */
+    private static int PREBUILT_QUERY_SIZE = 20;
+
+    /**
      * Various Cypher queries and clauses used during querying directory entries.
      */
     private static final String MATCH_DIRECTORY = "(d%d:Directory {name: $name%d, root: $root%d})";
@@ -48,6 +62,7 @@ public class DirectoryEntryRepositoryImpl extends BaseEntryRepositoryImpl implem
     private static final String QUERY_ROOT = "MATCH(r:Directory {name: '/', root:true}) RETURN r";
     private static final String QUERY_SUBDIRS_PAGINATED = "MATCH (p:Directory {id: $id}) OPTIONAL MATCH(p)-[r:PARENT_OF]->(c:Directory) RETURN c SKIP $skip LIMIT $limit";
     private static final String RELATIONSHIP_PARENT_OF = "-[:PARENT_OF]->";
+
 
     /**
      * Class logger
@@ -332,14 +347,35 @@ public class DirectoryEntryRepositoryImpl extends BaseEntryRepositoryImpl implem
             return List.of(findRoot(fsUri));
         }
 
-        //  Dynamically build cypher query that navigates from direcctory to directory.
+        //  Build first part of Cypher query that navigates from direcctory to directory.
         Map<String,Object> params = new HashMap<>(MATCH_ROOT_PARAMS);
-        StringBuilder sbMatch = new StringBuilder("MATCH").append(MATCH_DIRECTORY.formatted(0, 0, 0));
-        StringBuilder sbReturn = new StringBuilder(" RETURN d0");
+        StringBuilder sbMatch;
+        StringBuilder sbReturn;
 
-        for (int i = 1; i < paths.size(); i++) {
-            addMatchDirectory(sbMatch, sbReturn, params, paths.get(i - 1), false, i);
+        //  The Cypher query submitted to Neo4J uses substitution parameters to improve performance, therefore we can
+        //  prebuild queries to avoid repetitve building up of query through string concatenation.  If the number of
+        //  paths is within the number of prebuilt queries, use the prebuilt to speed things up.
+        int sizeMinusOne = paths.size() - 1;
+        if (sizeMinusOne < PREBUILT_QUERY_SIZE) {
+            //  Prebuilt query exists.
+            sbMatch = new StringBuilder(prebuiltQueryMatch[sizeMinusOne]);
+            sbReturn = new StringBuilder(prebuiltQueryReturn[sizeMinusOne]);
+            for (int i = 1; i < paths.size(); i++) {
+                params.put("name" + i, paths.get(i - 1));
+                params.put("root" + i, Boolean.FALSE);
+            }
+        } else {
+            //  Prebuilt query doesn't exist, so build it dynamically.  NOTE: yes, we could take use the largest
+            //  prebuilt query and just append the remaining parts, but unlikely to see extreme path depth and
+            //  therefore likely unnecessary at this time.  Maybe another day.
+            sbMatch = new StringBuilder("MATCH").append(MATCH_DIRECTORY.formatted(0, 0, 0));
+            sbReturn = new StringBuilder(" RETURN d0");
+            for (int i = 1; i < paths.size(); i++) {
+                addMatchDirectory(sbMatch, sbReturn, params, paths.get(i - 1), false, i);
+            }
         }
+
+        //  The final part of the Cypher query is dependent on what caller passed in
         lastClause.apply(sbMatch, sbReturn, params, paths.getLast(), paths.size());
 
         //  Concatenate and query the whole thing
@@ -385,5 +421,26 @@ public class DirectoryEntryRepositoryImpl extends BaseEntryRepositoryImpl implem
         queryParams.put("name" + index, directoryName);
         queryParams.put("root" + index, isRoot);
         sbReturn.append(", d").append(index);
+    }
+
+    /**
+     * Prebuilds Cypher queries to minimize repeated string building for same thing.
+     */
+    @PostConstruct
+    private void prebuildQueries() {
+        prebuiltQueryMatch = new String[PREBUILT_QUERY_SIZE];
+        prebuiltQueryReturn = new String[PREBUILT_QUERY_SIZE];
+
+        //  Dynamically build cypher query that navigates from direcctory to directory.
+        Map<String,Object> ignored = new HashMap<>();
+        StringBuilder sbMatch = new StringBuilder("MATCH").append(MATCH_DIRECTORY.formatted(0, 0, 0));
+        StringBuilder sbReturn = new StringBuilder(" RETURN d0");
+        prebuiltQueryMatch[0] = sbMatch.toString();
+        prebuiltQueryReturn[0] = sbReturn.toString();
+        for (int i = 1; i < PREBUILT_QUERY_SIZE; i++) {
+            addMatchDirectory(sbMatch, sbReturn, ignored, "", false, i);
+            prebuiltQueryMatch[i] = sbMatch.toString();
+            prebuiltQueryReturn[i] = sbReturn.toString();
+        }
     }
 }
