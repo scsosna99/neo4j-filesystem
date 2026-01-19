@@ -470,7 +470,7 @@ public class BaseEntryRepositoryImpl {
                               final String relationship,
                               final String endNode) {
         sbMatch
-            //  needed for 'OPTIONAL MATCH' but not run of the mill so sometimes fomatting does nothing, looks weird
+            //  needed for 'OPTIONAL MATCH' but not run-of-the-mill so sometimes formatting does nothing, looks weird
             .append(relationship.formatted(index - 1))
             .append(endNode.formatted(index, index));
         queryParams.put("name" + index, entryName);
@@ -480,7 +480,7 @@ public class BaseEntryRepositoryImpl {
     /**
      * Updates timestamps as appropriate for entry.  Entries persisted for first time will have no create timestamp,
      * therefore all timestamps set; otherwise just set last modified.
-     * @param entry
+     * @param entry updated file/directory needing updated timestamps
      */
     private void updateTimestamps (final BaseEntry entry) {
         Instant now = Instant.now();

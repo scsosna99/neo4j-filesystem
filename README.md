@@ -18,7 +18,7 @@ These custom implementations have numerous issues:
 * Non-standard, customized APIs for managing file system require additional development effort.
 * Customized implementations are more difficult to maintain and extend.
 
-`Neo4Jfs` attempts to resolve these issues by providing a standardized, fully-functional Java file system backed by a graph database which can quickly and easily navigate an arbitrarily deep directory structure.  `Noe4Jfs` stores directory and file entries as *nodes* with relationships to make a simple graph.  Pathnames and permissions are derived at query time rather than stored explicitly with each entry, allowing a directory move to be nothing more than changing a relationship.
+`Neo4Jfs` attempts to resolve these issues by providing a standardized, fully-functional Java file system backed by a graph database which can quickly and easily navigate an arbitrarily deep directory structure.  `Neo4Jfs` stores directory and file entries as *nodes* with relationships to make a simple graph.  Pathnames and permissions are derived at query time rather than stored explicitly with each entry, allowing a directory move to be nothing more than changing a relationship.
 
 # Getting Started
 
@@ -38,11 +38,11 @@ The `Neo4Jfs` project is divided into three modules/sub-projects:
 * `neo4jfs-web`: a bare-bones web app exposing `Neo4JFfs` via REST APIs.  The app exposes minimum functionality.  The app cannot be used in production without significant security enhancements and more appropriate error handling.  **You have been warned!**
 
 ## URI Details
-The URI scheme for `Noe4Jfs` is `neo4jfs`.  A complete URI has the form `neo4jfs://[partition]/directory/path` where `[partition]` segregates different virtual file systems by dedicating a `Neo4J` database per partition.  `Neo4Jfs` will automatically create the database if it does not already exist.
+The URI scheme for `Neo4Jfs` is `neo4jfs`.  A complete URI has the form `neo4jfs://[partition]/directory/path` where `[partition]` segregates different virtual file systems by dedicating a `Neo4J` database per partition.  `Neo4Jfs` will automatically create the database if it does not already exist.
 
 ## Storage Manager
 
-The `Noe4Jfs` storage manager is responsible for writing/reading file contents to/from external storage.  The project supports two different storage manager:
+The `Neo4Jfs` storage manager is responsible for writing/reading file contents to/from external storage.  The project supports two different storage manager:
 * **local**: the default storage manager using local disk storage, location specified by the location specified by `neo4jfs.local.directory` or from current working directory. 
 * **dummy**: the no-op storage manager that does not persist file contents to an external location, useful when testing file tree functionality and actual file contents are not important.
 
