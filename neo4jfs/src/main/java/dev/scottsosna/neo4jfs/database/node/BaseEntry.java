@@ -80,16 +80,18 @@ public class BaseEntry {
      */
     boolean hidden;
 
-
+    /**
+     * permissions inherited by ancestor class when entry has no directly-assigned permissions, cannot be set directly.
+     */
     @Transient
     @Setter(AccessLevel.NONE)
-    String inheritedPermissions;
+    private String inheritedPermissions;
 
     /**
      * In which Neo4Jfs file system is this entry located?
      */
     @Transient
-    URI fsUri;
+    private URI fsUri;
 
     /**
      * Permissions stored with enty is converted into a set of PosixFilePermissions.
