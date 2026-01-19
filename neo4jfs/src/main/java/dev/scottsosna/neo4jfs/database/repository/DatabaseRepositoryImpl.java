@@ -113,7 +113,7 @@ public class DatabaseRepositoryImpl extends BaseEntryRepositoryImpl implements D
      */
     private List<Database> deserialize(final Result r) {
         return StreamSupport.stream(r.spliterator(), false)
-            .map(Database::new).
-            toList();
+            .map(Database::new)
+            .toList();
     }
 }
