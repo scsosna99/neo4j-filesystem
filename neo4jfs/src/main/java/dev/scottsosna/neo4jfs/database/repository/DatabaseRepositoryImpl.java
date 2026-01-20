@@ -17,6 +17,7 @@ package dev.scottsosna.neo4jfs.database.repository;
 import dev.scottsosna.neo4jfs.config.Neo4jfsConfiguration;
 import dev.scottsosna.neo4jfs.database.model.neo4j.Database;
 import org.neo4j.ogm.model.Result;
+import org.neo4j.ogm.session.Session;
 import org.springframework.stereotype.Component;
 
 import java.net.URI;
@@ -35,6 +36,7 @@ public class DatabaseRepositoryImpl extends BaseEntryRepositoryImpl implements D
      * Neo4J commands for working with databases.
      */
     private static final String CREATE_DATABASE = "CREATE DATABASE $database";
+    private static final String CREATE_INDEX = "CREATE INDEX %s IF NOT EXISTS FOR (%s) ON %s";
     private static final String DROP_DATABASE = "DROP DATABASE $database";
     private static final String SHOW_DATABASE = "SHOW DATABASE $database";
     private static final String SHOW_DATABASES = "SHOW DATABASES";
@@ -56,9 +58,27 @@ public class DatabaseRepositoryImpl extends BaseEntryRepositoryImpl implements D
      */
     @Override
     public Database create(final URI fsUri) {
+        //  Create the database
         String dbName = fsUri.getHost();
         query(CREATE_DATABASE, Map.of(PARAMETER_DATABASE, dbName));
+
+        //  Create the indices
+        createIndexes(fsUri);
+
+        //  Return the newly-created database.
         return find(dbName);
+    }
+
+    /**
+     * Create indexes to help performance
+     * @param fsUri Neo4Jfs URI for database
+     */
+    public void createIndexes(final URI fsUri) {
+        //  Note: Likely this needs to be more configurable than hard-coded, but good enough for now.  Also, I desperately
+        //  tried to use substitution parameters but couldn't get it to work (other than index name).  Again, good enough.
+        Session session = getSessionFactory(fsUri).openSession();
+        session.query(CREATE_INDEX.formatted("ENTRY_NAME_IDX", "b:BaseEntry", "b.name"), Map.of());
+        session.query(CREATE_INDEX.formatted("FILE_STORAGE_IDX", "f:File", "f.storageId"), Map.of());
     }
 
     /**

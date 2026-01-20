@@ -85,6 +85,7 @@ public class FileSystemServiceImpl extends BaseNeo4jfsService implements FileSys
         if (db != null) {
             //  Database exists, verify usability
             verifyDatabaseUsability(db);
+            repository.createIndexes(fsUri);
             directoryService.findOrCreateRoot(fsUri);
         } else {
             //  No existing database, create new and add root directory.  Admin-only operation.

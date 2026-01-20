@@ -33,6 +33,12 @@ public interface DatabaseRepository {
     Database create(final URI fsUri);
 
     /**
+     * Create indexes to help performance
+     * @param fsUri Neo4Jfs URI for database
+     */
+    void createIndexes(final URI fsUri);
+
+    /**
      * Drop an existing database from the Neo4J instance.
      *
      * @param fsUri Neo4J file system URI for the database to be dropped
