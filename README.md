@@ -4,7 +4,7 @@ This software is available under the [MIT license](https://opensource.org/licens
 This software is available under the [GPLv3 license](https://www.gnu.org/licenses/gpl-3.0.html) for all **commercial** use *unless* a separate license is acquired from its owner, [Scott C. Sosna](license@scottsosna.dev).
 
 # Overview 
-`Neo4Jfs` is a fully-functioning Java file system based on `java.nio.file.FileSystem` architecture.  The file tree is managed as nodes and vectors persisted to a Neo4J database, while the file contents are stored separately in an external store (i.e., [AWS S3](https://aws.amazon.com/s3/), [Azure Blob Storage](https://azure.microsoft.com/en-us/products/storage/blobs), local disk, etc.).
+`Neo4Jfs` is a fully-functioning Java file system based on `java.nio.file.FileSystem` architecture.  The file tree is managed as graph nodes and relationships persisted to a Neo4J database, while the file contents are stored separately in an external store (i.e., [AWS S3](https://aws.amazon.com/s3/), [Azure Blob Storage](https://azure.microsoft.com/en-us/products/storage/blobs), local disk, etc.).
 
 As a Java file system, JVM-based solutions use `java.nio.file.File` functionality to manage files through well-known Java APIs: create directories, upload/download files, move files/directories, etc.  `java.nio.file.Files` bridges file systems, for example copying files from a local disk into `Neo4Jfs` simply by calling `java.nio.file.File.copy()` without requiring your application to open/read/write the local file:
 
@@ -64,12 +64,12 @@ Refer to [application.xml](neo4jfs/src/main/resources/application.properties) fo
 See the [Neo4Jfs Demo](neo4jfs-demo/README.md) for more examples of using `Neo4Jfs` with `java.nio.file.Files`
 
 # Future Work
-* Add support for soft links and other special file types (e.g., URL bookmarks seems like a good candidate)
-* Extend security beyond simple Posix permissions to support ACLS.
+* Add support for soft links and other special file types (e.g., URL bookmarks seem like a good candidate)
+* Extend security beyond simple Posix permissions to support ACLs.
 * Add additional APIs to sample web app for more than the most simple file management.
 * Detailed security testing.  If there's any area that may have issues, it's security. 
 * ~~Caching Cypher statements generated, avoid re-generating them for every query.~~
-* File de-duping, e.g., when "copying" file don't actually copy file contents until modification occurs.
+* File de-duping, e.g., when "copying" file doesn't actually copy file contents until modification occurs.
 * Hidden files.
 * More than just perfunctory performance testing.  Benchmark against other file systems, load testing, access testing, etc.
 * Unit tests.
