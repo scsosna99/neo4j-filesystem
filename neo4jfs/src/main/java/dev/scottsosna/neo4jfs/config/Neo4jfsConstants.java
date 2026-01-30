@@ -69,6 +69,11 @@ public class Neo4jfsConstants {
     public static final String CYPHER_PARAM_PAGINATION_SKIP = "skip";
 
     /**
+     * Recognized properties during initial file system creation.
+     */
+    public static final String FILE_SYSTEM_ENV_READ_ONLY = "read-only";
+
+    /**
      * Spring-configured properties that can be retrieved ny Spring context.
      */
     public static final String NEO4JFS_PROPERTY_PAGINATION_SIZE = "neo4jfs.pagination.size";

@@ -128,6 +128,15 @@ public class LocalStorageFileStore extends Neo4jfsFileStore {
     }
 
     /**
+     * By default, Neo4Jfs file stores are always read/write.
+     * @return false
+     */
+    @Override
+    public boolean isReadOnly() {
+        return !Files.isWritable(partitionPath);
+    }
+
+    /**
      * Lazy-create the object that gets specific attributes from the file store.
      * @return LocalFileStoreAttributes instance
      * @throws IOException if an I/O error occurs

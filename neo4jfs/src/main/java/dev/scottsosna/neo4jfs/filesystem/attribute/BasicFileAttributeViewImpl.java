@@ -19,6 +19,9 @@ import dev.scottsosna.neo4jfs.database.repository.DirectoryEntryRepository;
 import dev.scottsosna.neo4jfs.util.SpringContext;
 
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.ReadOnlyFileSystemException;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.attribute.FileTime;
 
@@ -103,7 +106,12 @@ public class BasicFileAttributeViewImpl implements java.nio.file.attribute.Basic
      * Entry attributes have been updated, attempt to persist changes back to database
      */
     protected void persist() {
-        //  This only works when the Neo4Jfs URI has been set on the enty.
+        //  File system must be writable before any attribute changes are persisted.
+        if (!Files.isWritable(Path.of(entry.getFsUri()))) {
+            throw new ReadOnlyFileSystemException();
+        }
+
+        //  This only works when the Neo4Jfs URI has been set on the entry.
         if (entry.getFsUri() != null) {
             DirectoryEntryRepository repo = getRepository();
             repo.save(entry.getFsUri(), entry, BaseEntry.class);

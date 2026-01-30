@@ -41,7 +41,7 @@ abstract public class Neo4jfsFileStore extends FileStore {
     }
 
     /**
-     * Neo4Jfs file stores are always read/write.
+     * By default, Neo4Jfs file stores are always read/write.
      * @return false
      */
     @Override

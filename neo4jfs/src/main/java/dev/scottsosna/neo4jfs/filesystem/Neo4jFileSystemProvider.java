@@ -15,6 +15,7 @@
 package dev.scottsosna.neo4jfs.filesystem;
 
 import dev.scottsosna.neo4jfs.config.Neo4jfsConstants;
+import dev.scottsosna.neo4jfs.exception.Neo4jfsNoSuchPartition;
 import dev.scottsosna.neo4jfs.filesystem.attribute.BasicFileAttributeViewImpl;
 import dev.scottsosna.neo4jfs.filesystem.attribute.PosixFileAttributeViewImpl;
 import dev.scottsosna.neo4jfs.service.DirectoryService;
@@ -114,7 +115,7 @@ public class Neo4jFileSystemProvider extends FileSystemProvider {
         //  for the running application.  However, the underpinnings may already exist - the partition-specific
         //  database and storage, similar to an already-existing disk.
         fileSystemService.init(truncatedUri);
-        Neo4jFileSystem created = new Neo4jFileSystem(this, uri, env);
+        Neo4jFileSystem created = new Neo4jFileSystem(this, uri, getFileStore(truncatedUri), env);
         fileSystems.put(truncatedUri, created);
 
         //  Return created file system.
@@ -188,7 +189,16 @@ public class Neo4jFileSystemProvider extends FileSystemProvider {
     public SeekableByteChannel newByteChannel(final Path path,
                                               final Set<? extends OpenOption> options,
                                               final FileAttribute<?>... attrs) throws IOException {
-        return fileService.newByteChannel(path.toUri(), options, attrs);
+        URI uri = path.toUri();
+
+        //  Byte channel may be open either as read-only or read-write, when read-write we need to check
+        //  whether file system is currently in read-only mode.
+        if (isWriteAccessRequired(options)) {
+            checkforReadOnly(uri);
+        }
+
+        //  Good to gok attempt to create the byte channel.
+        return fileService.newByteChannel(uri, options, attrs);
     }
 
     /**
@@ -216,7 +226,9 @@ public class Neo4jFileSystemProvider extends FileSystemProvider {
      */
     @Override
     public void createDirectory(final Path dir, final FileAttribute<?>... attrs) throws IOException {
-        directoryService.mkdir(dir.toUri());
+        URI uri = dir.toUri();
+        checkforReadOnly(uri);
+        directoryService.mkdir(uri);
     }
 
     /**
@@ -227,7 +239,9 @@ public class Neo4jFileSystemProvider extends FileSystemProvider {
      */
     @Override
     public void delete(final Path path) throws IOException {
-        directoryService.delete(path.toUri());
+        URI uri = path.toUri();
+        checkforReadOnly(uri);
+        directoryService.delete(uri);
     }
 
     /**
@@ -242,7 +256,9 @@ public class Neo4jFileSystemProvider extends FileSystemProvider {
     public void copy(final Path source,
                      final Path target,
                      final CopyOption... options) throws IOException {
-        directoryService.copy(source.toUri(), target.toUri(), options);
+        URI uri = source.toUri();
+        checkforReadOnly(uri);
+        directoryService.copy(uri, target.toUri(), options);
     }
 
     /**
@@ -257,7 +273,9 @@ public class Neo4jFileSystemProvider extends FileSystemProvider {
     public void move(final Path source,
                      final Path target,
                      final CopyOption... options) throws IOException {
-        directoryService.move(source.toUri(), target.toUri(), options);
+        URI uri = source.toUri();
+        checkforReadOnly(uri);
+        directoryService.move(uri, target.toUri(), options);
     }
 
     /**
@@ -297,7 +315,7 @@ public class Neo4jFileSystemProvider extends FileSystemProvider {
      */
     @Override
     public FileStore getFileStore(final Path path) throws IOException {
-        return fileSystemService.getFileStore(path.toUri());
+        return getFileStore(path.toUri());
     }
 
     /**
@@ -309,6 +327,11 @@ public class Neo4jFileSystemProvider extends FileSystemProvider {
      */
     @Override
     public void checkAccess(final Path path, final AccessMode... modes) throws IOException {
+        //  If AccessMode.WRITE required, first check if file system is read-write.
+        if (Arrays.stream(modes).anyMatch(mode -> mode == AccessMode.WRITE)) {
+            checkforReadOnly(path.toUri());
+        }
+
         //  Delegate to DirectoryService which does yeoman's work of checking access.
         directoryService.checkAccess(path, modes);
     }
@@ -416,6 +439,11 @@ public class Neo4jFileSystemProvider extends FileSystemProvider {
                              final String attribute,
                              final Object value,
                              final LinkOption... options) throws IOException {
+        //  First check if file system is read-write, either the file system initially created as read-only or
+        //  underlying storage manager is read-only.
+        URI uri = path.toUri();
+        checkforReadOnly(uri);
+
         //  Determine view name for the requested attributes.
         String viewName = determineViewName(attribute);
 
@@ -426,7 +454,7 @@ public class Neo4jFileSystemProvider extends FileSystemProvider {
             throw new UnsupportedOperationException("Single attribute must be specified: " + attribute);
         }
 
-        directoryService.setAttribute(path.toUri(), viewName, validated.getFirst(), value);
+        directoryService.setAttribute(uri, viewName, validated.getFirst(), value);
     }
 
     /**
@@ -468,7 +496,9 @@ public class Neo4jFileSystemProvider extends FileSystemProvider {
      */
     public OutputStream newOutputStream(final Path path, final OpenOption... options) throws IOException {
         if (path instanceof Neo4jfsPath p) {
-            return fileService.getOutputStream(p.toUri());
+            URI uri = p.toUri();
+            checkforReadOnly(uri);
+            return fileService.getOutputStream(uri);
         } else {
             return null;
         }
@@ -489,6 +519,39 @@ public class Neo4jFileSystemProvider extends FileSystemProvider {
     }
 
     /**
+     * Do any options provided require mutable access to underlying storage?
+     * @param options OpenOptions provided
+     * @return true if write/mutable access required, false otherwise.
+     */
+    private boolean isWriteAccessRequired(final Set<? extends OpenOption> options) {
+        return
+            //  No options implies write access
+            options == null || options.isEmpty() ||
+
+            // Check for any option which implies write
+            options.stream()
+                .anyMatch(o ->
+                    o == StandardOpenOption.WRITE ||
+                    o == StandardOpenOption.APPEND ||
+                    o == StandardOpenOption.CREATE ||
+                    o == StandardOpenOption.CREATE_NEW ||
+                    o == StandardOpenOption.TRUNCATE_EXISTING ||
+                    o == StandardOpenOption.DELETE_ON_CLOSE)
+            ;
+    }
+
+    /**
+     * Returns the FileStore representing the file store where a file is located.
+     *
+     * @param fsUri URI of the file system
+     * @return FileStore for the Neo4Jfs file system identified by URI
+     * @throws IOException an I/O error occurred
+     */
+    private FileStore getFileStore(final URI fsUri) throws IOException {
+        return fileSystemService.getFileStore(fsUri);
+    }
+
+    /**
      * The URI's path is meaningless and could cause for multiple instances of identical file system to be created,
      * so always truncate the path to the root directory.
      *
@@ -498,6 +561,24 @@ public class Neo4jFileSystemProvider extends FileSystemProvider {
     private URI truncateUri(final URI uri) {
         validateUri(uri);
         return uri.resolve(Neo4jfsConstants.NAME_ROOT_DIRECTORY);
+    }
+
+    /**
+     * Any create/update/delete operation must have read-write access to underlying storage, if
+     * @param uri Neo4Jfs URI
+     * @throws IOException if the file system is read-only or does not exist.
+     */
+    private void checkforReadOnly(final URI uri) throws IOException {
+        FileSystem fileSystem = fileSystems.get(truncateUri(uri));
+        if (fileSystem != null) {
+            if (fileSystem.isReadOnly()) {
+                throw new ReadOnlyFileSystemException();
+
+            }
+        } else {
+            //  Technically this should never occur, but just in case.
+            throw new Neo4jfsNoSuchPartition(uri.toString());
+        }
     }
 
     /**
@@ -520,26 +601,6 @@ public class Neo4jFileSystemProvider extends FileSystemProvider {
         }
 
         return DEFAULT_ATTRIBUTE_VIEW_NAME;
-    }
-
-    /**
-     * Build the attribute map for the requested view
-     *
-     * @param viewName requested view
-     * @param attributes list of attributes to return
-     * @param file the file/directory for which we want attributes
-     * @return Map of requested attributes and their values
-     */
-    private Map<String,Object> buildAttributeMap(final String viewName,
-                                                 final List<String> attributes,
-                                                 final BasicFileAttributes file) {
-        switch (viewName) {
-            case BasicFileAttributeViewImpl.VIEW_NAME:
-                return buildAttributeMapBasic(attributes, file);
-            default:
-                //  Should never get here ....
-                throw new UnsupportedOperationException(viewName);
-        }
     }
 
     /**

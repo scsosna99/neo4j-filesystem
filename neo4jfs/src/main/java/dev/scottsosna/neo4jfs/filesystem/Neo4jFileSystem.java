@@ -30,7 +30,20 @@ import java.util.Set;
  */
 public class Neo4jFileSystem extends FileSystem {
 
+    /**
+     * Is the file system considered open/usage?
+     */
     private boolean isOpen = false;
+
+    /**
+     * Is the file system read-write or read-only?
+     */
+    private final boolean readOnly;
+
+    /**
+     * File store for the file system.
+     */
+    private final FileStore store;
 
     /**
      * Environment-specifics passed to file system provider when creating file system.
@@ -66,13 +79,19 @@ public class Neo4jFileSystem extends FileSystem {
      */
     public Neo4jFileSystem(final Neo4jFileSystemProvider provider,
                            final URI fsUri,
+                           final FileStore store,
                            final Map<String, ?> env) {
         this.provider = provider;
         this.uri = fsUri;
+        this.store = store;
         this.env = (env != null) ? env : Map.of();
         isOpen = true;
         rootPath = new Neo4jfsPath(this, Neo4jfsConstants.NAME_ROOT_DIRECTORY);
         rootPaths = Set.of(rootPath);
+
+        //  Determines if the file system was created/declared as read-only
+        Object temp = env.get(Neo4jfsConstants.FILE_SYSTEM_ENV_READ_ONLY);
+        readOnly = (temp != null) && Boolean.parseBoolean(temp.toString());
     }
 
     /**
@@ -108,7 +127,7 @@ public class Neo4jFileSystem extends FileSystem {
      */
     @Override
     public boolean isReadOnly() {
-        return false;
+        return readOnly || store.isReadOnly();
     }
 
     /**

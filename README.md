@@ -73,3 +73,4 @@ See the [Neo4Jfs Demo](neo4jfs-demo/README.md) for more examples of using `Neo4J
 * Hidden files.
 * More than just perfunctory performance testing.  Benchmark against other file systems, load testing, access testing, etc.
 * Unit tests.
+* ~~Read-only file system.~~
