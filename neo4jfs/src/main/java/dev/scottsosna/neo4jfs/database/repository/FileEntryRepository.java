@@ -17,6 +17,7 @@ package dev.scottsosna.neo4jfs.database.repository;
 import dev.scottsosna.neo4jfs.database.node.FileEntry;
 
 import java.net.URI;
+import java.util.List;
 
 /**
  * Interface for managing {@link FileEntry} nodes.
@@ -46,4 +47,12 @@ public interface FileEntryRepository extends BaseEntryRepository {
      * @return FileEntry returned from database
      */
     FileEntry load(final URI fsUri, final String fileNodeId);
+
+    /**
+     * Find files associated with specified external storage ID
+     * @param fsUri Neo4Jfs base URI
+     * @param storageId external storage ID
+     * @return List of files associated with storage ID
+     */
+    List<FileEntry> findByStorageId(final URI fsUri, final String storageId);
 }

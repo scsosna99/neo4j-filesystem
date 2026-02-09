@@ -19,12 +19,19 @@ import dev.scottsosna.neo4jfs.database.node.FileEntry;
 import org.springframework.stereotype.Component;
 
 import java.net.URI;
+import java.util.List;
+import java.util.Map;
 
 /**
  * {@link FileEntryRepository} interfacee for managing files in Neo4J.
  */
 @Component
 public class FileEntryRepositoryImpl extends BaseEntryRepositoryImpl implements FileEntryRepository {
+
+    /**
+     * Various Cypher queries and clauses used during querying directory entries.
+     */
+    private static final String MATCH_STORAGE = "MATCH (f:File {storageId: $storageId}) RETURN f";
 
     /**
      * Constructor
@@ -64,5 +71,15 @@ public class FileEntryRepositoryImpl extends BaseEntryRepositoryImpl implements 
      */
     public FileEntry load(final URI fsUri, final String fileNodeId) {
         return load(fsUri, fileNodeId, FileEntry.class);
+    }
+
+    /**
+     * Find files associated with specified external storage ID
+     * @param fsUri Neo4Jfs base URI
+     * @param storageId external storage ID
+     * @return List of files associated with storage ID
+     */
+    public List<FileEntry> findByStorageId(final URI fsUri, final String storageId) {
+        return query(fsUri, MATCH_STORAGE, Map.of("storageId", storageId), FileEntry.class);
     }
 }

@@ -350,12 +350,16 @@ public class FileServiceImpl extends BaseNeo4jfsService implements FileService {
             throw new IOException("Unable to delete file entry %s.".formatted(file.getName()));
         }
 
-        try {
-            //  Not ideal if physical file can't be deleted from storage manager but, as far as file system knows,
-            //  the file is gone and inaccessible once the node is deleted.  Probably need a util to clean up orphans
-            storageManager.deleteFile(uri, file.getStorageId());
-        } catch (IOException e) {
-            logger.info("{}: unable to delete file {} from storage manager: {}", file.getName(), file.getStorageId(), e.getMessage());
+        //  Check for any other files which may share same external storage, in which case we won't delete.
+        List<FileEntry> files = repository.findByStorageId(uri, file.getStorageId());
+        if (files == null || files.isEmpty()) {
+            try {
+                //  Not ideal if physical file can't be deleted from storage manager but, as far as file system knows,
+                //  the file is gone and inaccessible once the node is deleted.  Probably need a util to clean up orphans
+                storageManager.deleteFile(uri, file.getStorageId());
+            } catch (IOException e) {
+                logger.info("{}: unable to delete file {} from storage manager: {}", file.getName(), file.getStorageId(), e.getMessage());
+            }
         }
     }
 
