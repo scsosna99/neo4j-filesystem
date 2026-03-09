@@ -94,6 +94,26 @@ public class BaseEntryRepositoryImpl {
     }
 
     /**
+     * Package-private constructor for testing purposes, allowing injection of a pre-configured SessionFactory.
+     * This SessionFactory will be used for all database operations regardless of the URI's host.
+     * @param config configuration bean holds Neo4J connection and authentication credentials.
+     * @param sessionFactory pre-configured session factory for testing
+     */
+    BaseEntryRepositoryImpl(Neo4jfsConfiguration config, SessionFactory sessionFactory) {
+        super();
+        this.config = config;
+        defaultSessionFactory = sessionFactory;
+        // Populate the session factories map with a wildcard entry that will be returned for any database name
+        // This is a test-only behavior to allow mocking
+        this.testModeSessionFactory = sessionFactory;
+    }
+
+    /**
+     * Test-only field: when set, sessionFactory() will always return this instead of creating new instances
+     */
+    private SessionFactory testModeSessionFactory = null;
+
+    /**
      * Attempt to find a child of a directory by name.  The child may be either a directory or a file (or truthfully
      * anything else) but the parent must be a directory.  The primary use case is to determine the existence/lack
      * thereof of a child for a specific name and, when present, its type.
@@ -214,6 +234,11 @@ public class BaseEntryRepositoryImpl {
      * @return session factory for database.
      */
     private SessionFactory sessionFactory(final String dbName) {
+        // Test mode: return the test session factory if configured
+        if (testModeSessionFactory != null) {
+            return testModeSessionFactory;
+        }
+
         //  Has session factory been previously created?
         var sf = sessionFactories.get(dbName);
         if (sf == null) {

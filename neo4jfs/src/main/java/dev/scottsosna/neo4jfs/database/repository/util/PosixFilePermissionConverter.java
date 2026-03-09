@@ -19,7 +19,6 @@ import dev.scottsosna.neo4jfs.util.SpringContext;
 
 import java.nio.file.attribute.PosixFilePermission;
 import java.util.Set;
-import java.util.regex.Pattern;
 
 /**
  * Utility class for transforming the {@code PosixFilePermission} enum used by Java NIO into a *nix-like permissions
@@ -28,12 +27,6 @@ import java.util.regex.Pattern;
 public class PosixFilePermissionConverter {
 
     private static AccessManager accessManager;
-
-    /**
-     * Neo4Jfs permissions are stored as the 9-character string displayed by a Unix "ls -l" command.  This static
-     * pattern can be used to validate that the permissions string is correctly formatted to prevent errors.
-     */
-    private static Pattern validation = Pattern.compile("^[r-][w-][x-][r-][w-][x-][r-][w-][x-]$");
 
     /**
      * Convert set of {@link PosixFilePermission} to a (somewhat) human-readable string as displayed by *nix ls -l command

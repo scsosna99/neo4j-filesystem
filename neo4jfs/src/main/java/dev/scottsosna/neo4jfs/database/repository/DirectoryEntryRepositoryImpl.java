@@ -22,6 +22,7 @@ import dev.scottsosna.neo4jfs.database.node.DirectoryEntry;
 import dev.scottsosna.neo4jfs.database.node.FileEntry;
 import dev.scottsosna.neo4jfs.database.repository.util.AddCypherClauseConsumer;
 import jakarta.annotation.PostConstruct;
+import org.neo4j.ogm.session.SessionFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -75,6 +76,15 @@ public class DirectoryEntryRepositoryImpl extends BaseEntryRepositoryImpl implem
      */
     public DirectoryEntryRepositoryImpl(Neo4jfsConfiguration config) {
         super(config);
+    }
+
+    /**
+     * Package-private constructor for testing purposes
+     * @param config Neo4Jfs configuration bean
+     * @param sessionFactory pre-configured session factory for testing
+     */
+    DirectoryEntryRepositoryImpl(final Neo4jfsConfiguration config, final SessionFactory sessionFactory) {
+        super(config, sessionFactory);
     }
 
     /**

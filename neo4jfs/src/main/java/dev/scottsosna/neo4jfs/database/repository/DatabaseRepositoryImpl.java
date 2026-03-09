@@ -18,6 +18,7 @@ import dev.scottsosna.neo4jfs.config.Neo4jfsConfiguration;
 import dev.scottsosna.neo4jfs.database.model.neo4j.Database;
 import org.neo4j.ogm.model.Result;
 import org.neo4j.ogm.session.Session;
+import org.neo4j.ogm.session.SessionFactory;
 import org.springframework.stereotype.Component;
 
 import java.net.URI;
@@ -48,6 +49,15 @@ public class DatabaseRepositoryImpl extends BaseEntryRepositoryImpl implements D
      */
     public DatabaseRepositoryImpl(final Neo4jfsConfiguration config) {
         super(config);
+    }
+
+    /**
+     * Package-private constructor for testing purposes
+     * @param config configuration bean hold Neo4J connection and authentication credentials.
+     * @param sessionFactory pre-configured session factory for testing
+     */
+    DatabaseRepositoryImpl(final Neo4jfsConfiguration config, final SessionFactory sessionFactory) {
+        super(config, sessionFactory);
     }
 
     /**
