@@ -17,6 +17,7 @@ package dev.scottsosna.neo4jfs.database.repository;
 import dev.scottsosna.neo4jfs.config.Neo4jfsConfiguration;
 import dev.scottsosna.neo4jfs.database.node.FileEntry;
 import org.neo4j.ogm.session.SessionFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.net.URI;
@@ -38,6 +39,7 @@ public class FileEntryRepositoryImpl extends BaseEntryRepositoryImpl implements 
      * Constructor
      * @param config N3o4Jfs configuration bean
      */
+    @Autowired
     public FileEntryRepositoryImpl(final Neo4jfsConfiguration config) {
         super(config);
     }

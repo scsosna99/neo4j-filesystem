@@ -50,8 +50,7 @@ public class DummyStorageManager implements StorageManager {
     }
 
     public FileStore getPartitionFileStore(final URI fsUri) throws IOException {
-        String partitionName = fsUri.getHost();
-        return new LocalStorageFileStore(Path.of("/dev/null", partitionName));
+        return new LocalStorageFileStore(Path.of(System.getProperty("java.io.tmpdir")));
     }
 
     @Override

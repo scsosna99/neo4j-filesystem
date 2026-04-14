@@ -19,6 +19,7 @@ import dev.scottsosna.neo4jfs.database.model.neo4j.Database;
 import org.neo4j.ogm.model.Result;
 import org.neo4j.ogm.session.Session;
 import org.neo4j.ogm.session.SessionFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.net.URI;
@@ -47,6 +48,7 @@ public class DatabaseRepositoryImpl extends BaseEntryRepositoryImpl implements D
      * Constructor
      * @param config configuration bean hold Neo4J connection and authentication credentials.
      */
+    @Autowired
     public DatabaseRepositoryImpl(final Neo4jfsConfiguration config) {
         super(config);
     }
