@@ -27,7 +27,7 @@ public class NullSeekableByteChannel implements SeekableByteChannel {
 
     private boolean closed = false;
     private long position = 0;
-    private Random random = new Random();
+    private final Random random = new Random();
 
     @Override
     public int read(ByteBuffer dst) throws IOException {
