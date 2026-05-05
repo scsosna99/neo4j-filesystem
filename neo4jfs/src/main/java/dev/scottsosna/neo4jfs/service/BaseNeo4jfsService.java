@@ -26,7 +26,6 @@ import java.net.URI;
 import java.nio.file.AccessDeniedException;
 import java.nio.file.AccessMode;
 import java.nio.file.CopyOption;
-import java.nio.file.NoSuchFileException;
 import java.util.Arrays;
 import java.util.List;
 
@@ -89,11 +88,11 @@ public class BaseNeo4jfsService {
         if (failed != null && failed.length > 0) {
             switch (failed[0]) {
                 case READ:
-                    throw new NoSuchFileException(entry.getName());
+                    throw new AccessDeniedException("READ access denied for %s.".formatted(entry.getName()));
                 case WRITE:
-                    throw new AccessDeniedException("Write access denied for %s.".formatted(entry.getName()));
+                    throw new AccessDeniedException("WRITE access denied for %s.".formatted(entry.getName()));
                 case EXECUTE:
-                    throw new AccessDeniedException("Execute access denied for %s.".formatted(entry.getName()));
+                    throw new AccessDeniedException("EXECUTE access denied for %s.".formatted(entry.getName()));
             }
         }
     }

@@ -18,6 +18,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
+import java.nio.file.AccessDeniedException;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
@@ -38,8 +39,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * <ul>
  *   <li>The admin user ({@code root}/{@code wheel}) always has full access.</li>
  *   <li>Accessing a path checks READ on the target and EXECUTE on its parent.</li>
- *   <li>When access is denied the implementation throws {@link NoSuchFileException}
- *       (hiding the entry from the caller) rather than {@link AccessDeniedException}.</li>
+ *   <li>When access is denied the implementation throws {@link AccessDeniedException}.</li>
  *   <li>Writing to a directory (creating a child) requires WRITE + EXECUTE on the
  *       parent directory.</li>
  * </ul>
@@ -169,7 +169,7 @@ class PermissionEnforcementTest extends AbstractNeo4jfsIntegrationTest {
 
         // Bob attempts to delete alice's file – must fail because he cannot traverse /home/alice.
         setSecurityContext("bob", "bob");
-        assertThrows(NoSuchFileException.class,
+        assertThrows(AccessDeniedException.class,
             () -> Files.delete(fileSystem.getPath("/home/alice/secret.txt")),
             "Bob must be denied traversal into alice's owner-only directory");
 
@@ -216,7 +216,7 @@ class PermissionEnforcementTest extends AbstractNeo4jfsIntegrationTest {
         // the file because it has no OTHERS_WRITE.  Access is denied at the file level
         // because Bob cannot read the file (no OTHERS_READ) → NoSuchFileException.
         setSecurityContext("bob", "bob");
-        assertThrows(NoSuchFileException.class,
+        assertThrows(AccessDeniedException.class,
             () -> Files.delete(fileSystem.getPath("/home/alice/private.txt")),
             "Bob must be denied deletion of owner-only file");
 
@@ -332,7 +332,7 @@ class PermissionEnforcementTest extends AbstractNeo4jfsIntegrationTest {
 
         // Carol is NOT in the "project" group → she cannot access.
         setSecurityContext("carol", "carol");
-        assertThrows(NoSuchFileException.class,
+        assertThrows(AccessDeniedException.class,
             () -> Files.delete(fileSystem.getPath("/project/restricted.txt")),
             "Non-group-member must be denied deletion of group-only file");
 

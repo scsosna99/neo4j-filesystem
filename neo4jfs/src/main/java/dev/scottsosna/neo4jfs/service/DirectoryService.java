@@ -65,8 +65,9 @@ public interface DirectoryService {
      * Returns {@code BaseEntry} nodes representing path from root to specific directory/file.
      * @param uri fully-qualified Neo4Jfs URI specifying directory/file to find
      * @return {@code BaseEntry} list representing the target path or empty list if path doesn't exist.
+     * @throws IOException if access not allowed on target
      */
-    List<BaseEntry> find(final URI uri);
+    List<BaseEntry> find(final URI uri) throws IOException;
 
     /**
      * Return a directory with a paginated list of children (files, subdirectories)

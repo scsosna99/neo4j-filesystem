@@ -21,12 +21,12 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import java.io.IOException;
+import java.nio.file.AccessDeniedException;
 import java.nio.file.DirectoryNotEmptyException;
-import java.util.EnumSet;
 import java.nio.file.Files;
-import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.attribute.PosixFilePermission;
+import java.util.EnumSet;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -220,7 +220,7 @@ class RecursiveDeletionTest extends AbstractNeo4jfsIntegrationTest {
 
         // Bob cannot traverse /vault (no OTHERS_EXECUTE) → NoSuchFileException.
         setSecurityContext("bob", "bob");
-        assertThrows(NoSuchFileException.class,
+        assertThrows(AccessDeniedException.class,
             () -> directoryService.delete(
                 fileSystem.getPath("/vault").toUri(),
                 Neo4jfsDeleteOption.DELETE_RECURSIVELY),

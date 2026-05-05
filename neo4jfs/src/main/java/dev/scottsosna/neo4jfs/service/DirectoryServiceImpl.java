@@ -177,19 +177,39 @@ public class DirectoryServiceImpl extends BaseNeo4jfsService implements Director
      * Returns {@code BaseEntry} nodes representing path from root to specific directory/file.
      * @param uri fully-qualified Neo4Jfs URI specifying directory/file to find
      * @return {@code BaseEntry} list representing the target path or empty list if path doesn't exist.
+     * @throws IOException if access not allowed on target
      */
-    public List<BaseEntry> find(final URI uri) {
+    public List<BaseEntry> find(final URI uri) throws IOException {
         checkUri(uri);
         List<BaseEntry> entries = repository.find(uri, Path.of(uri));
 
-        if (entries != null &&
-            !entries.isEmpty() &&
-            (entries.size() == 1 || checkAccessNoThrows(entries.get(entries.size() - 2), AccessMode.EXECUTE) == null) &&
-            checkAccessNoThrows(entries.getLast(), AccessMode.READ) == null) {
-            return entries;
-        } else {
+        //  Nothing found, return an empty list and let caller decide whether that's a problem or not.
+        if (entries == null || entries.isEmpty()) {
             return List.of();
         }
+
+        //  Must have READ on immediate parent before anything is possible with target, assuming parent is
+        //  not root directory (why?!?).  {@code checkAccess} will throw the appropriate exception.
+        //  TODO: Should we be checking ALL parent directories or just immediate parent?
+        if (entries.size() > 1) {
+            checkAccess(entries.get(entries.size() - 2), AccessMode.READ);
+        }
+
+        //  Check access for target, which differs by entry type.  Assume that directory is being "entered" and therefore
+        //  you also need EXECUTE to do anything.
+        switch (entries.getLast()) {
+            case DirectoryEntry d:
+                checkAccess(d, AccessMode.READ, AccessMode.EXECUTE);
+                break;
+            case FileEntry f:
+                checkAccess(f, AccessMode.READ);
+                break;
+            default:
+                throw new Neo4jfsUnknownEntryException(uri, entries.getLast().getClass().getName());
+        }
+
+        //  Everything checks out, return the entry list
+        return entries;
     }
 
     /**

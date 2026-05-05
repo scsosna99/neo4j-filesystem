@@ -18,12 +18,12 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
-import java.util.EnumSet;
+import java.nio.file.AccessDeniedException;
 import java.nio.file.Files;
-import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.attribute.PosixFilePermission;
+import java.util.EnumSet;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -171,7 +171,7 @@ class PermissionInheritanceTest extends AbstractNeo4jfsIntegrationTest {
         // Bob cannot even locate the file: parent has no OTHERS_EXECUTE.
         // find() returns empty → NoSuchFileException from prologue().
         setSecurityContext("bob", "bob");
-        assertThrows(NoSuchFileException.class,
+        assertThrows(AccessDeniedException.class,
             () -> Files.delete(fileSystem.getPath("/home/alice/hidden.txt")),
             "Bob must not be able to reach the file through the locked-down parent directory");
 
@@ -232,7 +232,7 @@ class PermissionInheritanceTest extends AbstractNeo4jfsIntegrationTest {
         // Bob previously could have read the file via inheritance; now he cannot
         // because the explicit permissions have no OTHERS bits.
         setSecurityContext("bob", "bob");
-        assertThrows(NoSuchFileException.class,
+        assertThrows(AccessDeniedException.class,
             () -> Files.delete(fileSystem.getPath("/home/alice/overridden.txt")),
             "After explicit lock-down, bob must be denied even though parent allows others");
 
@@ -297,7 +297,7 @@ class PermissionInheritanceTest extends AbstractNeo4jfsIntegrationTest {
 
         // Bob is NOT in team → he has no access (no OTHERS bits at any level).
         setSecurityContext("bob", "bob");
-        assertThrows(NoSuchFileException.class,
+        assertThrows(AccessDeniedException.class,
             () -> Files.delete(fileSystem.getPath("/data/sub/deep.txt")),
             "Non-team user must be denied access through inherited group-only permissions");
 
