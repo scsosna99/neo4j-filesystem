@@ -16,7 +16,7 @@ package dev.scottsosna.neo4jfs.database.model.neo4j;
 
 /**
  * Column names for the data that comes back from a "SHOW DATABASE" query as defined by
- * https://neo4j.com/docs/operations-manual/current/database-administration/standard-databases/listing-databases/
+ * <a href="https://neo4j.com/docs/operations-manual/current/database-administration/standard-databases/listing-databases/">...</a>
  */
 public class DatabaseColumnNames {
 
