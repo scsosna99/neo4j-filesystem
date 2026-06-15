@@ -69,7 +69,9 @@ public class LocalStorageManager implements StorageManager {
     public void initPartition(final URI fsUri) throws IOException {
         File partition = Path.of(neo4jfsBasePath, determinePartition(fsUri)).toFile();
         if (!partition.exists()) {
-            partition.mkdirs();
+            if (!partition.mkdirs()) {
+                throw new IOException("Unable to create partition directory");
+            }
         } else if (!partition.isDirectory()) {
             //  A "file" is not a directory and can't be used for storage.
             throw new NotDirectoryException(partition.toString());
