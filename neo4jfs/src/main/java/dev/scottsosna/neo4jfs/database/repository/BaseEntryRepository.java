@@ -56,14 +56,14 @@ public interface BaseEntryRepository {
      void save (final URI fsUri, final List<Callable> tasks) throws IOException;
 
 
-        /**
-         * Remove the relationship between two nodes identified by their ids.
-         *
-         * @param uri URI of the file system, using host to identify database.
-         * @param startId start node from which outgoing relationship is to be removed
-         * @param endId end node whose incoming relationship is to be removed
-         * @return count of relationships deleted
-         */
+    /**
+     * Remove the relationship between two nodes identified by their ids.
+     *
+     * @param uri URI of the file system, using host to identify database.
+     * @param startId start node from which outgoing relationship is to be removed
+     * @param endId end node whose incoming relationship is to be removed
+     * @return count of relationships deleted
+     */
     Integer deleteRelationship(final URI uri, final String startId, final String endId);
 
     /**
