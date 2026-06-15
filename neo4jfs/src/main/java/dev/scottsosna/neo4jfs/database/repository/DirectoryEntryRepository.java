@@ -24,6 +24,13 @@ import java.util.List;
 
 public interface DirectoryEntryRepository extends BaseEntryRepository {
 
+    /**
+     * Create new directory entry.
+     * @param fsUri Neo4Jfs base URI
+     * @param toCreate directory to create
+     * @param parent parent directory of the newly-created directory
+     * @return {@link DirectoryEntry}
+     */
     DirectoryEntry create (final URI fsUri, final DirectoryEntry toCreate, final DirectoryEntry parent);
 
     /**
