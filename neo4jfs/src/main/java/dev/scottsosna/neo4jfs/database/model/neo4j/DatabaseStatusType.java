@@ -20,7 +20,7 @@ import java.util.stream.Collectors;
 
 /**
  * Neo4J database status as defined by official documentation.
- * https://neo4j.com/docs/operations-manual/current/database-administration/standard-databases/listing-databases/
+ * <a href="https://neo4j.com/docs/operations-manual/current/database-administration/standard-databases/listing-databases/">...</a>
  */
 public enum DatabaseStatusType {
     ONLINE("online"),
@@ -39,7 +39,6 @@ public enum DatabaseStatusType {
      */
     private final String statusValue;
 
-    //  Map of status values to enum values used to convert what Neo4J into actual enum
     /**
      * Maps Neo4J status values to enum, used when converted what was returned by Neo4J.
      */

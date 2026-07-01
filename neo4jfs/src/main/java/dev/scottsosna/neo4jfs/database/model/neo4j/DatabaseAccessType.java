@@ -20,7 +20,7 @@ import java.util.stream.Collectors;
 
 /**
  * Neo4J database access as defined by official documentation.
- * https://neo4j.com/docs/operations-manual/current/database-administration/standard-databases/listing-databases/
+ * <a href="https://neo4j.com/docs/operations-manual/current/database-administration/standard-databases/listing-databases/">...</a>
  */
 public enum DatabaseAccessType {
     READ_ONLY("read-only"),

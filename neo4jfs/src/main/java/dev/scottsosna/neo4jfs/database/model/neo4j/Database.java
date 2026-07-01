@@ -84,7 +84,7 @@ public class Database {
     /**
      * Constructor that deserializes the results returned from a "SHOW DATABASE" query.  As this is
      * not a true Cypher query returning nodes/relationships, we manually deserialize.
-     * @param results
+     * @param results the raw data returned from Neo4J.
      */
     public Database(Map<String,Object> results) {
         this.access = DatabaseAccessType.convert(results.get(DatabaseColumnNames.ACCESS).toString());
