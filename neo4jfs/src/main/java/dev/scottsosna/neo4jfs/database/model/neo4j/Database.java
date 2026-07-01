@@ -77,7 +77,7 @@ public class Database {
     private String name;
 
     /**
-     * true for standalong instance or for instance in cluster accepting writes for this database
+     * true for standalone instance or for instance in cluster accepting writes for this database
      */
     private Boolean writer;
 
