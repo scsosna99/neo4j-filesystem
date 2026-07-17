@@ -58,11 +58,6 @@ public class Demo07 extends Demo  {
 
     private void createHome(final FileSystem fs) throws IOException {
         try {
-            //  Base directory under which each user's home directory is created.
-            if (!Files.exists(fs.getPath("/home"))) {
-                Files.createDirectory(fs.getPath("/home"));
-            }
-
             //  Permissions for each home directory.
             EnumSet<PosixFilePermission> perms = EnumSet.of(
                 PosixFilePermission.OWNER_READ,
@@ -72,6 +67,14 @@ public class Demo07 extends Demo  {
                 PosixFilePermission.GROUP_WRITE,
                 PosixFilePermission.OTHERS_READ
             );
+
+            //  Base directory under which each user's home directory is created.
+            Path home = fs.getPath("home");
+            if (!Files.exists(home)) {
+                Files.createDirectory(home);
+                Files.setPosixFilePermissions(home, perms);
+
+            }
 
             //  Iterate through users to create and configure their home directories.
             String[] users = {"alice", "bob", "carol"};
@@ -103,6 +106,9 @@ public class Demo07 extends Demo  {
         try {
             //  Create shared directory and set permissions so anyone can read/write
             Path path = fs.getPath("/home/alice/shared");
+            if (!Files.exists(path)) {
+                Files.createDirectories(path);
+            }
             Files.setPosixFilePermissions(path, EnumSet.of(
                 PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE, PosixFilePermission.OWNER_EXECUTE,
                 PosixFilePermission.OTHERS_READ, PosixFilePermission.OTHERS_WRITE
