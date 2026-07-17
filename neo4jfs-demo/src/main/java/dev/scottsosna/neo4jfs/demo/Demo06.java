@@ -39,8 +39,11 @@ public class Demo06 extends Demo  {
     @Override
     public void demo() {
         try (FileSystem fs = FileSystems.newFileSystem(URI.create("neo4jfs://neo4jfs-demo"), Map.of())) {
-            Files.createDirectory(fs.getPath("/data"));
-            FileSystemUtils.copyRecursively(Path.of(System.getProperty("user.home")), fs.getPath("/data"));
+            Path data = fs.getPath("/data");
+            if (!Files.exists(data)) {
+                Files.createDirectory(data);
+            }
+            FileSystemUtils.copyRecursively(Path.of(System.getProperty("user.home")), data);
         } catch (IOException e) {
             System.out.println("Something bad happened: " + e.getMessage());
             e.printStackTrace();
