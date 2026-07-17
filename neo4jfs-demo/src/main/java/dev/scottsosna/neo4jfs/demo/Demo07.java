@@ -46,7 +46,7 @@ public class Demo07 extends Demo  {
     @Override
     public void demo() {
 
-        try (FileSystem fs = FileSystems.newFileSystem(URI.create("neo4jfs://xxxx"), Map.of("read-only", false))) {
+        try (FileSystem fs = FileSystems.newFileSystem(URI.create("neo4jfs://neo4jfs-demo"), Map.of("read-only", false))) {
             createHome(fs);
             setupAlice(fs);
             workByBob(fs);
@@ -59,7 +59,9 @@ public class Demo07 extends Demo  {
     private void createHome(final FileSystem fs) throws IOException {
         try {
             //  Base directory under which each user's home directory is created.
-            Files.createDirectory(fs.getPath("/home"));
+            if (!Files.exists(fs.getPath("/home"))) {
+                Files.createDirectory(fs.getPath("/home"));
+            }
 
             //  Permissions for each home directory.
             EnumSet<PosixFilePermission> perms = EnumSet.of(
@@ -76,7 +78,9 @@ public class Demo07 extends Demo  {
             for (String user : users) {
                 //  Create home directory.
                 Path path = fs.getPath("/home/%s".formatted(user));
-                Files.createDirectory(path);
+                if (!Files.exists(path)) {
+                    Files.createDirectory(path);
+                }
 
                 //  Set the owner to the user
                 Files.setOwner(path, new UserPrincipalImpl(user));
