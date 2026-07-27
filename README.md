@@ -1,7 +1,5 @@
 # Licensing Requirements
-This software is available under the [MIT license](https://opensource.org/license/MIT) for **non-commercial** use only.
-
-This software is available under the [GPLv3 license](https://www.gnu.org/licenses/gpl-3.0.html) for all **commercial** use *unless* a separate license is acquired from its owner, [Scott C. Sosna](license@scottsosna.dev).
+This software is available under the [MIT license](https://opensource.org/license/MIT).
 
 # Overview 
 `Neo4Jfs` is a fully-functioning Java file system based on `java.nio.file.FileSystem` architecture.  The file tree is managed as graph nodes and relationships persisted to a Neo4J database, while the file contents are stored separately in an external store (i.e., [AWS S3](https://aws.amazon.com/s3/), [Azure Blob Storage](https://azure.microsoft.com/en-us/products/storage/blobs), local disk, etc.).
